@@ -1,40 +1,94 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, flash, redirect, url_for, session
+from dotenv import load_dotenv
+import csv
+import os 
+import json
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
-import json
 
+load_dotenv()
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY')
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Route to render the homepage
 @app.route('/')
-def home():
+def start():
     return render_template('index.html')
 
 # Route for uploading and processing data
-@app.route('/upload', methods=['POST'])
-def upload():
+@app.route('/home', methods=['POST','GET'])
+def home():
     if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+        flash('No file part')
+        return redirect(request.url)
 
     file = request.files['file']
+
     if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+        flash('No selected file')
+        return redirect(request.url)
 
-    try:
-        # Read uploaded file into a DataFrame
-        df = pd.read_csv(file)
+    if file and file.filename.endswith('.csv'):
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        rename_file = 'data.csv'
         
-        # Store the DataFrame in JSON format for session-like usage
-        request_data = {
-            "columns": df.columns.tolist(),
-            "data": df.to_json()
+        new_file_path = os.path.join(app.config['UPLOAD_FOLDER'], rename_file)
+        
+        file.save(file_path)
+        os.rename(file_path, new_file_path)
+        
+        # Baca isi file CSV
+        name = rename_file
+        df = pd.read_csv(new_file_path)
+        dataframe = df.to_json()
+                
+        session['df'] = dataframe
+        
+        rows = len(df.index)
+        session['rows'] = rows
+        header = df.axes[1].values.tolist()
+        session['header'] = header
+        
+        attributes = len(header)
+        types = []
+        maxs = []
+        mins = []
+        means = []
+        
+        for i in range (len(header)):
+            types.append(df[header[i]].dtypes.name)
+            if df[header[i]].dtypes != object:
+                maxs.append(df[header[i]].max())
+                mins.append(df[header[i]].min())
+                means.append(df[header[i]].mean())
+            else : 
+                maxs.append(0)
+                mins.append(0)
+                means.append(0)
+            
+        zipped_data = zip(header,types,maxs,mins,means)
+        datas = df.values.tolist()
+        data = {
+            'header' : header,
+            'headers' : json.dumps(header),
+            'name' : name,
+            'attributes' : attributes,
+            'rows' : rows,
+            'zipped_data' : zipped_data,
+            'df' : datas,
+            'type' : types,
+            'maxs' : maxs,
+            'mins' : mins,
+            'means' : means,
         }
-
-        return jsonify(request_data), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        #session['data'] = data
+        return render_template('table.html', data=data)
+    else:
+        flash('File must be in CSV format')
+        return render_template('index.html')
 
 # Route for clustering
 @app.route('/cluster', methods=['POST'])
@@ -67,6 +121,12 @@ def cluster():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+@app.route('/viewdata')
+def viewdata() : 
+    data = session.get('rows,{}')
+    return render_template('test.html',data=data)
+@app.route('/back')
+def go_back():
+    return redirect(request.referrer or url_for('home'))
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{%block content%}
+<!-- Main Content -->
+            <!-- Content -->
+             <div class="row ">
+                 <div class="col-sm float-start">
+                     <h2>Upload Data CSV</h2>
+                     <!-- Form Upload CSV -->
+                     <form action="/upload" method="POST" enctype="multipart/form-data">
+                         <div class="mb-3">
+                             <label for="csvFile" class="form-label">Pilih file CSV</label>
+                             <input type="file" class="form-control" id="csvFile" name="csvFile" accept=".csv" required>
+                         </div>
+                         <button type="submit" class="btn btn-primary">Upload</button>
+                     </form>
+                </div>
+                
+                {%if data%}
+                <div class="col-sm box_information">
+                    <p>Information</p>
+                        <p>Attributes : {{data.attributes}}</p>
+                        <p>Rows : {{data.rows}}</p>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+                <hr>
+                <!-- Data Table -->
+                <div class="row text-center">
+                    <div class="col-md-6 ">
+                        <h2>Data Table</h2>
+                        <div class="box_attributes">
+                            <div class="scrollAble table-dark">
+                            <table class="table table-bordered border-dark border-1  table-striped table_attr">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <tr>
+                                            {% if data  %}
+                                            {% for head in data.header %}
+                                            <th class="text-center " scope="col">{{head}}</th>
+                                            {% endfor %}
+                                            {% endif %}                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% if data %}
+                                            {% for datas in data.df  %}
+                                            <tr>
+                                                {% for data in datas %}
+                                                <td>{{data}}</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    {%else%}
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada data</td>
+                                        </tr>
+                                    {%endif%}
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>                    
+                        </div>
+
+                    <!-- header -->
+                     {%if data%}
+                    <div class="chart col-md-6">
+                        <h2>Overview Colums</h2>
+                        <div class="box_attributes">
+                            <div class="scrollAble">
+                                <div class="table table-dark">
+                                    <table class="table table_attr">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>No.</th>
+                                                <th>Name</th>
+                                                {% if type !='object' %}
+                                                    <th>Minimum</th>
+                                                    <th>Maximum</th>
+                                                    <th>Mean</th>
+                                                {% endif %}
+                                                <th>Missing Data</th>
+                                                <th>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% if data.zipped_data %}
+                                                {% for header,type,maxs,mins,means,missing_data in data.zipped_data  %}
+                                                <tr>
+                                                    <td>{{loop.index}}</td>
+                                                    <td>{{header}}</td>
+                                                    {% if type != 'object' %}
+                                                    <td>{{mins}}</td>
+                                                    <td>{{maxs}}</td>
+                                                    <td>{{means}}</td>
+                                                    {% else %}
+                                                        <td> - </td>
+                                                        <td> - </td>
+                                                        <td> - </td>
+                                                    {% endif %}
+                                                    <td>{{missing_data}}</td>
+                                                    <td>{{type}}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </tbody>
+                                        {%else%}
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada columns</td>
+                                        </tr>
+                                {%endif%}
+                                    </table>                    
+                            </div>                               
+                            </div>
+                        </div>
+                </div>
+        </div> 
+    <!-- Delete Colouns -->
+    <form class="p-md-3" action="{{ url_for('delete') }}" method="POST"> 
+        <div class="row">
+            <div class="col-md-3">
+                <label for="columns_to_delete">Select columns to delete:</label>
+            </div>
+            <input class="btn btn-dark col-sm-4" type="submit" name="delete_columns" value="Delete Columns"  onclick="{{url_for('delete')}}">
+            <div class="col-md-7">
+                <table>
+                    <thead>
+                        <th>Name</th>
+                    </thead>
+                    <tbody>
+                        {%if data%}
+                            {%for head in data.header%}
+                        <tr>
+                            <td> <input name="columns_to_delete" id="columns_to_delete" value="{{head}}" type="checkbox">{{head}}</td>
+                        </tr>
+                            {%endfor%}
+                        {%endif%}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+{%endblock%}
+
+
+

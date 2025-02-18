@@ -1,0 +1,48 @@
+{% extends 'base.html'%}
+{%block content%}
+<div class="row position-relative">
+    <div class="col-md-6 ">
+        <div class="position-relative start-0 bottom-0" style="width: 75%; margin: auto;">
+            <canvas id="data_missing_or_null"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6 ">
+        <div class="position-relative end-0 bottom-0" style="width: 75%; margin: auto;">
+            <canvas id="myBarChart2"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Data for the chart
+fetch("/data/get_null_or_missing_value")
+    .then(response=> response.json())
+    .then(data => {
+        const data_missing_or_null = {
+            labels: data.labels,
+            datasets: [{
+                label: 'Data Try Out Missing Values dan Bernilai Zero',
+                data: data.values,
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(199, 199, 199, 1)',
+                borderWidth: 1
+            }]
+        };
+        const options = {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        };
+        const ctx_data_missing_or_null = document.getElementById('data_missing_or_null').getContext('2d');
+        const barChart_missing_or_null = new Chart(ctx_data_missing_or_null, {
+        type: 'bar',
+        data: data_missing_or_null,
+        options: options
+    });
+    })
+
+ 
+</script>
+{%endblock%}

@@ -2,47 +2,67 @@
 {%block content%}
 <div class="row position-relative">
     <div class="col-md-6 ">
-        <div class="position-relative start-0 bottom-0" style="width: 75%; margin: auto;">
+        <div class="position-relative start-0 bottom-0" style="width: 80%; margin: auto;">
             <canvas id="data_missing_or_null"></canvas>
         </div>
     </div>
     <div class="col-md-6 ">
-        <div class="position-relative end-0 bottom-0" style="width: 75%; margin: auto;">
-            <canvas id="myBarChart2"></canvas>
+        <div class="position-relative end-0 bottom-0" style="width: 60%; margin: auto;">
+            <canvas id="sum_status_siswa"></canvas>
         </div>
     </div>
 </div>
 
 <script>
+    //DOM Elements 
+    const ctx_data_missing_or_null = document.getElementById('data_missing_or_null').getContext('2d');
+    const ctx_sum_status_siswa = document.getElementById('sum_status_siswa').getContext('2d');
+
     // Data for the chart
-fetch("/data/get_null_or_missing_value")
+fetch("/api/data/visualization")
     .then(response=> response.json())
     .then(data => {
+        //bar chart missing value
+        const missing_value =  data.missing_value
         const data_missing_or_null = {
-            labels: data.labels,
+            labels: missing_value.labels,
             datasets: [{
                 label: 'Data Try Out Missing Values dan Bernilai Zero',
-                data: data.values,
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                data: missing_value.values,
+                barThickness: 25,
+                backgroundColor: 'rgba(13, 99, 139, 0.2)',
                 borderColor: 'rgba(199, 199, 199, 1)',
                 borderWidth: 1
             }]
         };
-        const options = {
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        };
-        const ctx_data_missing_or_null = document.getElementById('data_missing_or_null').getContext('2d');
+        
         const barChart_missing_or_null = new Chart(ctx_data_missing_or_null, {
         type: 'bar',
         data: data_missing_or_null,
-        options: options
-    });
+        options: options_bar_chart
+        });
+        // pie chart sum_status_siswa
+        const sum_status = data.sum_status
+        const data_sum_status = {
+            labels : sum_status.labels,
+            datasets : [{
+                label : "Jumlah Status Siswa Lolos SKD",
+                data : sum_status.values,
+                backgroundColor: [
+                'rgb(255, 99, 132)',
+                'rgb(54, 162, 235)',
+                'rgb(255, 205, 86)'
+                ],
+                hoverOffset: 4
+            }]       
+        }
+        const piechart_sum_status = new Chart(ctx_sum_status_siswa,{
+            type : 'pie',
+            data : data_sum_status,
+            borderAlign : 'center',
+            options : options_pie_chart
+        })
     })
-
- 
 </script>
+<script src="/static/js/style_chart.js"></script> 
 {%endblock%}

@@ -6,6 +6,7 @@ import pandas as pd
 import json
 from flask_session import Session
 from io import StringIO
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 load_dotenv()
 app = Flask(__name__)
@@ -28,12 +29,18 @@ def index():
     serialize_data = redis_client.get('data_key')
     if serialize_data:
         data = json.loads(serialize_data)
-        print(data)
         return render_template('index.html', data=data)
     else:
         return render_template('index.html', data=None)
 def serialize_df_to_json(df):
     return df.to_json(orient='split')
+def retrive_df_from_redis(key : str) :
+    retrive_data =  redis_client.get(key)
+    json_string = retrive_data.decode('utf-8')
+    df = pd.read_json(json_string,orient='split')
+    return df
+     
+    
     
 
 @app.route('/upload', methods=['POST'])
@@ -143,31 +150,96 @@ def delete():
         'rows' : session['rows']
     }
     data = session['data']
-    print(data)
     return render_template('index.html',data=data)
     
 @app.route('/data',methods=['GET'])
 def get_data():
     if request.method == "GET":
-        data = [
-            get_null_or_missing_value()
-        ]
-        return render_template('data.html', data=data)
+        
+        return render_template('data.html')
 
-@app.route('/data/get_null_or_missing_value')
-def get_null_or_missing_value () : 
-    serialize_data = redis_client.get('df_key')
-    json_string= serialize_data.decode('utf-8')
-    df = pd.read_json(json_string,orient='split')
+def get_null_or_missing_value ()->str : 
+    df = retrive_df_from_redis('df_key')
     df_int = []
     for col_name, col_type in df.dtypes.items():  # Iterate through column names and types
         if col_type != 'object':
             df_int.append(col_name)
-
     sel_col = df[df_int]
     zero_value_columns = sel_col.columns[(sel_col == 0).any()]
     zero_count = (sel_col == 0).sum()[zero_value_columns]
-    zero_counts_json = {"labels" : zero_count.index.tolist(), "values" : zero_count.tolist()}
+    zero_counts_json = {'labels' : zero_count.index.tolist(), 'values' : zero_count.tolist()}
     return zero_counts_json
+
+def sum_status()->str:
+    # Example implementation
+    df = retrive_df_from_redis('df_key')
+    sum_status= df['Status'].value_counts().tolist()
+    data_sum_status = {
+        'labels' : df['Status'].unique().tolist(),
+        'values' : sum_status
+    }
+    return data_sum_status
+    
+def top_students_with_zero() ->str :
+    df = retrive_df_from_redis('df_key')
+    value_columns = df.columns[2:]  # Mengambil semua kolom kecuali 'No' dan 'id user'
+
+    # 2. Hitung jumlah nilai 0 untuk setiap siswa
+    df['zero_count'] = df[value_columns].apply(lambda row: (row == 0).sum(), axis=1)
+
+    # 3. Urutkan DataFrame berdasarkan jumlah nilai 0
+    sorted_df = df.sort_values(by='zero_count', ascending=False)
+
+    # 4. Ambil siswa dengan jumlah nilai 0 terbanyak
+    # top_students_with_zero = sorted_df[['Nama \npanggilan', 'zero_count']].head(10).tolist()
+    # Ambil 10 siswa teratas
+    data_top_students_with_zero = {
+        'labels' : sorted_df['Nama \npanggilan'].head(10).values.tolist(),
+        'values' : sorted_df['zero_count'].head(10).values.tolist()
+        }
+    # Tampilkan hasil
+    return data_top_students_with_zero
+
+#select columns 
+@app.route('/select/column',methods = ['POST'])
+def select_columns() ->str : 
+    columns = request.form.getlist('columns')
+    df = retrive_df_from_redis('df_key')
+    df_select_col = df.loc[:,columns]
+    header = df_select_col.columns.tolist()
+    data = {}
+    for col in header:
+        data[col] = df[col].tolist()
+    serialized_col = json.dumps(data)
+    redis_client.set('sel_col_key',serialized_col)
+    return data
+
+@app.route('/select/method')
+def df_normalization () -> str : 
+    data = redis_client.get('sel_col_key').decode('utf-8')
+    df = pd.read_json(data,orient='split')
+    select_methods = request.form.getlist('select_method')
+    if select_methods == 'minmax' : 
+        scaler = MinMaxScaler()
+    elif select_methods == 'standard' : 
+        scaler = StandardScaler()
+    
+    normalized_data = scaler.fit_transform(df)
+    serialized_normalized = json.dumps(normalized_data)
+    redis_client.set('normalized_key',serialized_normalized)
+    return normalized_data 
+
+
+
+@app.route('/api/data/visualization')
+def api() :
+    data= {
+        'missing_value' : get_null_or_missing_value(),
+        'sum_status'    : sum_status(),
+        'top_student_with_zero_' : top_students_with_zero(),
+        'select_columns' : select_columns()
+    }
+    return data
+
 if __name__ == '__main__':
     app.run(debug=True)

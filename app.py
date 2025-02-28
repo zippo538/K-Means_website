@@ -3,10 +3,14 @@ from dotenv import load_dotenv
 import os
 import redis
 import pandas as pd
+import numpy as np
 import json
 from flask_session import Session
 from io import StringIO
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
 
 load_dotenv()
 app = Flask(__name__)
@@ -18,11 +22,15 @@ app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_REDIS'] = redis.from_url('redis://127.0.0.1:6379')
 # Configure Redis
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=1)
+# redis_client.set('normalized_key', None)
 
 Session(app)
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
+
+
+## route
 
 @app.route('/')
 def index():
@@ -34,14 +42,21 @@ def index():
         return render_template('index.html', data=None)
 def serialize_df_to_json(df):
     return df.to_json(orient='split')
-def retrive_df_from_redis(key : str) :
+def retrive_df_from_redis(key : str) -> pd.DataFrame:
     retrive_data =  redis_client.get(key)
     json_string = retrive_data.decode('utf-8')
     df = pd.read_json(json_string,orient='split')
     return df
+def retrive_data_from_redis(key: str) -> str:
+    retrive_data = redis_client.get(key)
+    json_data = json.loads(retrive_data.decode('utf-8'))
+    return json_data
+def set_data_to_redis(key: str, data) -> str: 
+    data_json = json.dumps(data)
+    set_data =redis_client.set(key,data_json)
+    return set_data
+
      
-    
-    
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -65,12 +80,6 @@ def upload_file():
             
             rows = len(df.index)
             header = df.axes[1].values.tolist()
-            # session['df'] = df.to_json()
-            # session['rows'] = rows
-            # session['header'] = header
-            # print(session['rows'])
-            # print(session['header'])
-                
             attributes = len(header)
             types = []
             maxs = []
@@ -104,11 +113,11 @@ def upload_file():
                     'maxs' : maxs,
                     'mins' : mins,
                     'means' : means,
-                    'missing_data' : missing_data
+                    'missing_data' : missing_data,
+                    'zip_select_col' : None
                 }
-            serialized_data = json.dumps(data)
+            set_data_to_redis('data_key',data)
             serialized_df = serialize_df_to_json(df)
-            redis_client.set('data_key', serialized_data)
             redis_client.set('df_key',serialized_df)
             return render_template('index.html', data=data)
         else:
@@ -116,47 +125,162 @@ def upload_file():
     except Exception as e :
         app.logger.error(f'Error occurred: {e} - Path: {request.path}')
         return "An error occurred", 500
-@app.route('/get_ovewview_data', )
-def bar_chart_preview_data():
-    df = pd.read_csv('uploads/data.csv')
-    
-    data_chart = {}
-    return data_chart
 
-@app.route('/delete',methods=['POST'])
-def delete():
-    # Get the selected columns to delete
-    columns_to_delete = request.form.getlist('columns_to_delete')
-    print(columns_to_delete)
 
-    # Load the DataFrame from the session
-    import_df = StringIO(session['df'])
-    df = pd.read_json(import_df)
-
-    # Drop the selected columns
-    df = df.drop(columns=columns_to_delete,errors='ignore')
-
-    # Save the updated DataFrame back to the session
-    session['df'] = df.to_json()
-    session['header'] = df.columns.tolist()
-    session['rows'] = len(df.index)
-    # Render the updated DataFrame
-    # print(session['new_df'])
-    print(session['header'])
-    # print(session['rows'])
-    data = {
-        'header' : session['header'],
-        'df' : session['df'],
-        'rows' : session['rows']
-    }
-    data = session['data']
-    return render_template('index.html',data=data)
-    
 @app.route('/data',methods=['GET'])
 def get_data():
     if request.method == "GET":
+        serialize_data = redis_client.get('data_key')
+        if serialize_data or None:
+            data = json.loads(serialize_data)
+            return render_template('data.html', data=data)
+        else:
+            return render_template('data.html', data=None)
+
+
+#select columns 
+@app.route('/select/column',methods = ['POST','GET'])
+def select_columns() ->str : 
+    if request.method == 'POST':
+        redis_client.delete('sel_col_key')
+        columns = request.form.getlist('columns_to_delete')
+        data = redis_client.get('data_key')
+        data = json.loads(data.decode('utf-8'))
+        df = retrive_df_from_redis('df_key')
+        df_select_col = df.loc[:,columns]
+        header = df_select_col.columns.tolist()
+        sel_col = {}
+        for col in header:
+            sel_col[col]= df[col].tolist()
         
-        return render_template('data.html')
+        data['zip_select_col'] = list(zip(header,sel_col.values()))
+    
+        set_data_to_redis('data_key',data)
+        return redirect(url_for('get_data'))
+    else : 
+        data = redis_client.get('data_key').decode('utf-8')
+        if data : 
+            data = json.loads(data)
+        return render_template('data.html',data=data)
+
+#method normalization 
+@app.route('/select/method', methods=['POST'])
+def select_method_normalization() -> str : 
+    data = redis_client.get('data_key')
+    if data:
+        json_string = data.decode('utf-8')
+        json_data = json.loads(json_string)
+        
+        # Ensure 'zip_select_col' key exists in the JSON data
+        if 'zip_select_col' not in json_data:
+            return "Key 'zip_select_col' not found in data", 400
+        
+        # Convert 'zip_select_col' to DataFrame
+        zip_select_col = json_data['zip_select_col']
+        df = pd.DataFrame({col: values for col, values in zip_select_col})
+        
+        select_method = request.form.get('select_method')
+        if select_method == 'minmax':
+            scaler = MinMaxScaler()
+        elif select_method == 'standard':
+            scaler = StandardScaler()
+        else:
+            return "Invalid normalization method", 400
+        normalized_data = scaler.fit_transform(df.values)
+        
+        # Simpan data yang dinormalisasi ke Redis
+        print(df.columns.tolist())
+        json_data['zip_select_col'] = list(zip(df.columns.tolist(), normalized_data.T.tolist()))
+        normalized_data_json = {
+            'header': df.columns.tolist(),
+            'data': normalized_data.tolist()    
+        }
+        set_data_to_redis('normalized_key', normalized_data_json)
+        set_data_to_redis('data_key', json_data)
+        return redirect(url_for("get_data"))
+    else:
+        return "No data found", 400
+    
+#correct data
+@app.route('/select/correct_data', methods=['POST'])
+def select_correct_data() -> redirect:
+    data_key = retrive_data_from_redis('data_key')
+    zip_normalized = data_key['zip_select_col']    
+    select_method = request.form.get('select_correct_data')
+    df = pd.DataFrame({col: values for col, values in zip_normalized})
+    print(df)
+    if select_method == 'delete':
+        df_zip_normalized= delete_specific_values(df)
+        print('sesudah di delete',df_zip_normalized.T.values.tolist())
+        normalized_data_json = {
+            'header': df.columns.tolist(),
+            'data': df_zip_normalized.values.tolist()
+        }
+        data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.values.tolist()))
+        set_data_to_redis('data_key',data_key)
+        set_data_to_redis('normalized_key',normalized_data_json)
+        return redirect(url_for('get_data'))        
+    elif select_method == 'replace':
+        arr_df = np.array(df.values)
+        df_zip_normalized = fill_zeros_with_last(arr_df)
+        normalized_data_json = {
+            'header': df.columns.tolist(),
+            'data': df_zip_normalized.T.tolist()
+        }
+        data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.tolist()))
+        set_data_to_redis('data_key',data_key)
+        set_data_to_redis('normalized_key',normalized_data_json)
+        return redirect(url_for('get_data'))        
+        
+    
+
+def delete_specific_values(df, value_to_delete=[0,np.nan]) -> pd.DataFrame:
+    df.replace(value_to_delete, pd.NA, inplace=True)
+    df.dropna(inplace=True)
+    return df
+
+def fill_zeros_with_last(arr) -> np.ndarray:
+      for row_idx in range(arr.shape[0]):
+        # Create a 1D view of the current row
+        row = arr[row_idx, :]
+        # Hitung rata-rata dari elemen yang bukan 0 di baris tersebut
+        non_zero_non_nan_mean = row[(row != 0) & (~np.isnan(row))].mean() if np.count_nonzero(row) != 0 else 0
+        # Gantikan nilai 0 dengan rata-rata
+        row[row == 0] = non_zero_non_nan_mean
+        row[np.isnan(row)] = non_zero_non_nan_mean
+      return arr
+
+## K-means clustering
+
+def elbow_method () -> str:
+    normalized_key = retrive_data_from_redis('normalized_key')
+    data_key = retrive_data_from_redis('data_key')
+    df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
+    distortions = []
+    K = list(range(1, 10))
+    for k in K:
+        kmeanModel = KMeans(n_clusters=k)
+        kmeanModel.fit(df)
+        distortions.append(kmeanModel.inertia_)
+    data_json = {
+        'K': K,
+        'distortions': distortions
+    }
+    data_key['elbow_method'] = list(zip(K,distortions))
+    set_data_to_redis('data_key', data_key)
+    return data_json
+
+def kmenas_clustering(k : int) -> str:
+    normalized_key = retrive_data_from_redis('normalized_key')
+    data_key = retrive_data_from_redis('data_key')
+    df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
+    kmeans = KMeans(n_clusters=k)
+    kmeans.fit(df)
+    data_key['kmeans'] = kmeans.labels_.tolist()
+    set_data_to_redis('data_key', data_key)
+    return kmeans.labels_.tolist()
+
+##api
 
 def get_null_or_missing_value ()->str : 
     df = retrive_df_from_redis('df_key')
@@ -200,35 +324,8 @@ def top_students_with_zero() ->str :
     # Tampilkan hasil
     return data_top_students_with_zero
 
-#select columns 
-@app.route('/select/column',methods = ['POST'])
-def select_columns() ->str : 
-    columns = request.form.getlist('columns')
-    df = retrive_df_from_redis('df_key')
-    df_select_col = df.loc[:,columns]
-    header = df_select_col.columns.tolist()
-    data = {}
-    for col in header:
-        data[col] = df[col].tolist()
-    serialized_col = json.dumps(data)
-    redis_client.set('sel_col_key',serialized_col)
-    return data
 
-@app.route('/select/method')
-def df_normalization () -> str : 
-    data = redis_client.get('sel_col_key').decode('utf-8')
-    df = pd.read_json(data,orient='split')
-    select_methods = request.form.getlist('select_method')
-    if select_methods == 'minmax' : 
-        scaler = MinMaxScaler()
-    elif select_methods == 'standard' : 
-        scaler = StandardScaler()
     
-    normalized_data = scaler.fit_transform(df)
-    serialized_normalized = json.dumps(normalized_data)
-    redis_client.set('normalized_key',serialized_normalized)
-    return normalized_data 
-
 
 
 @app.route('/api/data/visualization')
@@ -237,7 +334,9 @@ def api() :
         'missing_value' : get_null_or_missing_value(),
         'sum_status'    : sum_status(),
         'top_student_with_zero_' : top_students_with_zero(),
-        'select_columns' : select_columns()
+        'elbow_method' : elbow_method(),
+        'kmeans' : kmenas_clustering(3)
+        
     }
     return data
 

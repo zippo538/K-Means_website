@@ -25,6 +25,18 @@
                 {% endif %}
                 </div>
             </div>
+            <div class="row position-relative">
+                <div class="col-md-6 ">
+                    <div class="position-relative start-0 bottom-0" style="width: 80%; margin: auto;">
+                        <div id="data_missing_or_null"></div>
+                    </div>
+                </div>
+                <div class="col-md-6 ">
+                    <div class="position-relative end-0 bottom-0" style="width: 80%; margin: auto;">
+                        <div id="sum_status_siswa"></div>
+                    </div>
+                </div>
+            </div>
                 <hr>
                 <!-- Data Table -->
                 <div class="row text-center">
@@ -117,31 +129,11 @@
                 </div>
         </div> 
     <!-- Delete Colouns -->
-    <form class="p-md-3" action="{{ url_for('delete') }}" method="POST"> 
-        <div class="row">
-            <div class="col-md-3">
-                <label for="columns_to_delete">Select columns to delete:</label>
-            </div>
-            <input class="btn btn-dark col-sm-4" type="submit" name="delete_columns" value="Delete Columns"  onclick="{{url_for('delete')}}">
-            <div class="col-md-7">
-                <table>
-                    <thead>
-                        <th>Name</th>
-                    </thead>
-                    <tbody>
-                        {%if data%}
-                            {%for head in data.header%}
-                        <tr>
-                            <td> <input name="columns_to_delete" id="columns_to_delete" value="{{head}}" type="checkbox">{{head}}</td>
-                        </tr>
-                            {%endfor%}
-                        {%endif%}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </form>
+    
+
+<script type="module" src="/static/js/chart.js"></script>
 {%endblock%}
+
 
 
 

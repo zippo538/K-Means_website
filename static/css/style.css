@@ -1,8 +1,20 @@
+:root {
+    --widht-table: 580 ; 
+    --heigh-table: 400; 
+}
+.navbar-nav .nav-link.active {
+    background-color: #343a40; /* Warna gelap */
+    color: white;
+    border-radius: 5px;
+}
 
 
 body {
     font-family: Arial, sans-serif;
-    margin: 20px;
+    background-color: #f4f4f4;
+}
+main {
+    margin : 20px;
 }
 
 table {
@@ -13,6 +25,7 @@ table {
 
 table, th, td {
     border: 1px solid #ddd;
+
 }
 
 th, td {
@@ -21,11 +34,27 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #8DA0CB; /* Biru keunguan */
+    color: white;
+    padding: 10px;
+    text-align: left;
+    text-align: center;
 }
 
-h1, h2 {
+tr:nth-child(even) {
+    background-color: #EFF3FF; /* Biru sangat muda */
+}
+
+tr:nth-child(odd) {
+    background-color: white;
+}
+
+
+
+h2 {
     color: #333;
+    width: 50% ;
+    text-align: center;
 }
 
 form {
@@ -57,6 +86,13 @@ form {
     width: 220px;
     height: 180;
 }
+.scrollAble .select-columns{
+    padding-top: 10px;
+    margin-top: 20px;
+    margin: 12px;
+    width: 100%;
+}
+
 
 .table_attr{
     font-size: 12px;
@@ -68,4 +104,38 @@ form {
     margin-top: 15px ;
     font-size: medium;
 
+}
+.chart_container {
+    width: 100%;
+    max-width: 800px; /* Atur lebar maksimum sesuai kebutuhan */
+    margin: 0 auto;
+}
+
+/* bar chart */
+.bar:hover {
+    fill: orange;
+}
+/* pie chart */
+.arc path:hover {
+    fill: orange;
+}
+/* box plot */
+.box:hover {
+    fill: orange;
+}
+
+
+/* BoxPlot */
+.box {
+    fill-opacity: 0.7;
+    stroke: #000;
+    stroke-width: 1.5;
+}
+.median {
+    stroke: #000;
+    stroke-width: 2;
+}
+.whisker {
+    stroke: #000;
+    stroke-width: 1.5;
 }

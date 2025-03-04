@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from dotenv import load_dotenv
+import re
 import os
 import redis
 import pandas as pd
@@ -55,6 +56,17 @@ def set_data_to_redis(key: str, data) -> str:
     data_json = json.dumps(data)
     set_data =redis_client.set(key,data_json)
     return set_data
+
+def remove_html_tags(text) -> str:
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', text)
+
+def convert_df_to_json_and_remove_html(df) -> str:
+    df_json = df.to_json(orient='split')
+    df_json_no_html = remove_html_tags(df_json)
+    parsed_json = json.loads(df_json_no_html)
+    clean_json = json.dumps(parsed_json, ensure_ascii=False)
+    return clean_json
 
      
 
@@ -116,8 +128,9 @@ def upload_file():
                     'missing_data' : missing_data,
                     'zip_select_col' : None
                 }
+            
             set_data_to_redis('data_key',data)
-            serialized_df = serialize_df_to_json(df)
+            serialized_df = serialize_df_to_json(df)            
             redis_client.set('df_key',serialized_df)
             return render_template('index.html', data=data)
         else:
@@ -136,6 +149,18 @@ def get_data():
             return render_template('data.html', data=data)
         else:
             return render_template('data.html', data=None)
+
+@app.route('/result',methods=['GET'])
+def get_result():
+    if request.method == "GET":
+        serialize_data = redis_client.get('data_key')
+        if serialize_data or None:
+            data = json.loads(serialize_data)
+            return render_template('result.html', data=data)
+        else:
+            return render_template('result.html', data=None)
+
+
 
 
 #select columns 
@@ -323,22 +348,38 @@ def top_students_with_zero() ->str :
         }
     # Tampilkan hasil
     return data_top_students_with_zero
+def get_data_from_dataframe() -> str:
+    if os.path.exists('uploads/data.csv'):
+        df = pd.read_csv('uploads/data.csv')
+        return df.values.tolist()
+    else:
+        return "Data not found"
 
 
     
 
 
 @app.route('/api/data/visualization')
-def api() :
+def api() -> str:
     data= {
         'missing_value' : get_null_or_missing_value(),
         'sum_status'    : sum_status(),
         'top_student_with_zero_' : top_students_with_zero(),
         'elbow_method' : elbow_method(),
-        'kmeans' : kmenas_clustering(3)
-        
+        'kmeans' : kmenas_clustering(3),
     }
     return data
+
+@app.route('/api/data/boxplot')
+def api_dataframe() -> str: 
+    df = retrive_df_from_redis('df_key')
+    data = df.iloc[:, 4:]
+    delete_col = ['Status','Gel','Jumlah absen \n TWK']
+    data = data.drop(delete_col, axis=1)
+    data = data.values.tolist()
+    header = df.columns[4:].tolist()
+    return {'data': data, 'header': header}
+    
 
 if __name__ == '__main__':
     app.run(debug=True)

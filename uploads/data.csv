@@ -12,7 +12,7 @@ lengkap",1,2,3,4,5,6,7,8,9,10,11 CBP,12,13 CBP,14,Gel,Status,"Jumlah absen
 8,1008,Brillian ,Brillian Thoriq Ardhana,0,374,343,373,372,277,328,366,341,395,385,384,277,379,1,PG,30
 9,1009,Chesya,Chesya Nabila Putri,0,0,0,0,0,280,375,360,376,417,337,283,301,405,2,Tidak Lulus,5
 10,1010,Daffarel,Daffarel Raditya Prasetyo,0,0,370,352,359,354,400,403,403,431,384,424,361,420,2,Tidak Lulus,17
-11,1011,Dafi,Muhammad Aldafi Haq ,0,0,326,323,402,264,401,311,378,387,309,345,,402,2,Tidak Lulus,20
+11,1011,Dafi,Muhammad Aldafi Haq ,0,0,326,323,402,264,401,311,378,387,309,345,0,402,2,Tidak Lulus,20
 12,1012,Dani,Ambar Retno Kusumadani,317,419,367,334,363,318,412,337,414,420,364,364,285,430,1,PG,34
 13,1013,Diah,Diah Ayu Setyorini ,0,0,0,283,359,328,401,379,422,456,332,333,323,428,2,Lulus,9
 14,1014,FADHIL,Fadhil Ahmad,373,393,383,385,393,372,408,372,400,435,411,338,310,441,1,PG,23
@@ -31,7 +31,7 @@ lengkap",1,2,3,4,5,6,7,8,9,10,11 CBP,12,13 CBP,14,Gel,Status,"Jumlah absen
 27,1027,Mala,Nisrina Zulfa Akmala ,394,363,340,380,385,310,416,395,465,434,392,346,306,417,1,PG,31
 28,1028,Marcha,Marcha Aulia Megantara,0,0,0,0,0,0,0,0,0,0,326,318,286,312,2,Tidak Lulus,11
 29,1029,Mateus,Mateus Septo Ardo Purba ,0,0,0,0,0,0,250,295,0,0,263,0,0,0,2,Tidak Lulus,8
-30,1030,Nabilla,Nabilla Puspitasari,0,0,0,0,0,0,379,354,393,406,415,,379,449,2,Tidak Lulus,14
+30,1030,Nabilla,Nabilla Puspitasari,0,0,0,0,0,0,379,354,393,406,415,0,379,449,2,Tidak Lulus,14
 31,1031,Nadia,Nadia Pitaloka Prayogo,0,0,0,0,0,0,381,423,435,471,377,396,483,463,2,PG,12
 32,1032,Naufal,Naufal Bhadrika Calya,328,387,405,372,382,268,398,418,406,403,383,402,0,418,1,Lulus,30
 33,1033,Nesa,Nesha Altafia Sasty,321,375,388,340,369,367,382,356,369,417,374,284,100,377,1,Tidak Lulus,10
@@ -44,11 +44,11 @@ lengkap",1,2,3,4,5,6,7,8,9,10,11 CBP,12,13 CBP,14,Gel,Status,"Jumlah absen
 40,1040,Sabila,Sabila Sahda Warapsari,0,0,0,0,0,0,0,0,0,0,311,306,245,348,2,Tidak Lulus,23
 41,1041,Safa,Safa Eka Putri Ainda,265,373,309,390,368,0,417,334,437,313,376,0,0,0,1,PG,27
 42,1042,Salman,Salman Naufal Dzaky ,0,0,0,0,0,0,337,345,351,410,352,304,288,401,2,Tidak Lulus,14
-43,1043,Sandhy,Rasendrya Laksana Kurnia Sandhy,339,374,334,342,345,332,432,367,393,377,410,,351,414,1,PG,33
+43,1043,Sandhy,Rasendrya Laksana Kurnia Sandhy,339,374,334,342,345,332,432,367,393,377,410,0,351,414,1,PG,33
 44,1044,Syahrul,Syahrul Prasetya Adi ,0,0,0,303,363,279,468,363,399,428,357,384,359,408,2,Tidak Lulus,25
 45,1045,Taufiq,Taufiq Nurhuda,297,395,319,342,304,309,408,378,431,432,352,362,291,394,1,Lulus,23
 46,1046,Teddy,Teddy alviyanda,286,401,331,361,363,306,405,360,372,0,0,0,0,0,1,PG,32
-47,1047,Tino,Agustino Berkah Aulia,0,0,0,0,0,319,394,369,,439,346,365,0,383,2,Lulus,10
+47,1047,Tino,Agustino Berkah Aulia,0,0,0,0,0,319,394,369,0,439,346,365,0,383,2,Lulus,10
 48,1048,Tio,Fahrintio Agil Saputro,0,0,386,363,342,323,415,368,417,433,390,384,0,425,1,Tidak Lulus,25
 49,1049,Tyas,Naflah Ayuning Tyas,0,0,0,0,0,0,0,0,0,0,373,0,322,361,2,Tidak Lulus,9
 50,1050,Wanda,Nur Wanda Septa,245,364,368,311,361,355,379,353,402,407,405,333,391,395,1,Lulus,23

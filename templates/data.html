@@ -2,31 +2,35 @@
 {%block content%}
 <form class="p-md-3" action="{{ url_for('select_columns') }}" method="POST"> 
     <div class="row">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label for="columns_to_select">Select columns to prepocessing:</label>
         </div>
-        <input class="btn btn-dark col-md-3" type="submit" name="select_columns" value="select Columns">
-        <label class="text-center col-md-6" for="Columns Selected">Columns Selected</label>
+        <input class="btn btn-dark col-md-2 " type="submit" name="select_columns" value="select Columns">
+        <label class="text-center col-md-5 " for="Columns Selected">Columns Selected</label>
     </div>
 
     <div class="row">
         <div class="col-md-6">
-                    <table>
-                        <thead>
-                            <th>Name</th>
-                        </thead>
-                        <tbody>
-                            {%if data%}
-                                {%for head in data.header%}
-                            <tr>
-                                <td> <input name="columns_to_delete" id="columns_to_delete" value="{{head}}" type="checkbox">{{head}}</td>
-                            </tr>
-                                {%endfor%}
-                            {%endif%}
-                        </tbody>
-                    </table>
+            <div class="box_attributes">
+                <div class="scrollAble">
+                        <table class="select-columns">
+                            <thead>
+                                <th>Name</th>
+                            </thead>
+                            <tbody>
+                                {%if data%}
+                                    {%for head in data.header%}
+                                <tr>
+                                    <td> <input name="columns_to_delete" id="columns_to_delete" value="{{head}}" type="checkbox">{{head}}</td>
+                                </tr>
+                                    {%endfor%}
+                                {%endif%}
+                            </tbody>
+                        </table>
+                </div>
+            </div>
         </div>
-        <div class="col-md-6 content-center">
+        <div class="col-md-6 ">
             <div class="box_attributes">
                 <div class="scrollAble">
                     <table>
@@ -90,4 +94,8 @@
             </div>
         </div>
     </div>
+<div class="row justify-content-center align-items-center">
+        <div id="elbow_method" class="chart_container"></div>
+</div>
+
 {%endblock%}

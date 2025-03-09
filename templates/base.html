@@ -23,7 +23,7 @@
                         <a class="nav-link {% if request.endpoint == 'get_data' %}active{% endif %}" href="{{ url_for('get_data') }}">Normalization</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'result' %}active{% endif %}" href="{{url_for('get_result')}}">Result</a>
+                        <a class="nav-link {% if request.endpoint == 'get_result' %}active{% endif %}" href="{{url_for('get_result')}}">Result</a>
                     </li>
                 </ul>
             </div>

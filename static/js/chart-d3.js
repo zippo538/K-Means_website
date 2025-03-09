@@ -367,4 +367,203 @@ function createElbowMethodChart(containerId, inertiaData, width = 800, height = 
         .text("Elbow Method for Optimal k");
 }
 
-export { createBarChart, createPieChart, createBoxPlot, createElbowMethodChart};
+function createScatterPlot(containerId, data, clusterCenters, width = 800, height = 500) {
+    const margin = { top: 50, right: 50, bottom: 50, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    // Skala dan sumbu
+    const x = d3.scaleLinear()
+        .domain([0, d3.max(data, (d) => d.x)]) // Domain sumbu X
+        .range([0, innerWidth]);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(data, (d) => d.y)]) // Domain sumbu Y
+        .range([innerHeight, 0]);
+
+    // Warna untuk setiap cluster
+    // const colors = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // SVG container
+    const svg = d3.select(`#${containerId}`)
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const tooltip = d3.select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("background", "white")
+        .style("border", "1px solid #ccc")
+        .style("padding", "10px")
+        .style("border-radius", "5px")
+        .style("pointer-events", "none");    
+
+    // Gambar lingkaran untuk setiap cluster
+    clusterCenters.forEach((center, i) => {
+        // Radius kecil (misalnya 20 piksel)
+        const radius = 50;
+
+        // Gambar lingkaran
+        svg.append("circle")
+            .attr("cx", x(center.x)) // Pusat X
+            .attr("cy", y(center.y)) // Pusat Y
+            .attr("r", radius) // Radius kecil
+            .attr("fill", colors[i%3])
+            .attr("opacity", 0.2) // Transparansi
+            .attr("stroke", colors[i])
+            .attr("stroke-width", 2);
+    });
+
+    // Gambar titik-titik data
+    svg.selectAll(".point")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class", "point")
+        .attr("cx", (d) => x(d.x)) // Posisi X
+        .attr("cy", (d) => y(d.y)) // Posisi Y
+        .attr("r", 5) // Radius titik
+        .attr("fill", (d) => colors[d.cluster]) // Warna berdasarkan cluster
+        .attr("stroke", "white")
+        .attr("stroke-width", 1)
+        .on("mouseover", (event, d) => {
+            // Tampilkan tooltip
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", 0.9);
+            tooltip.html(`Cluster: ${d.cluster}<br>Nama: ${d.name}`)
+                .style("left", `${event.pageX + 5}px`)
+                .style("top", `${event.pageY - 28}px`);
+        })
+        .on("mouseout", () => {
+            // Sembunyikan tooltip
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+
+    // Sumbu X
+    svg.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x))
+        .append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", 40)
+        .attr("fill", "black")
+        .attr("text-anchor", "middle")
+        .text("X Axis");
+
+    // Sumbu Y
+    svg.append("g")
+        .call(d3.axisLeft(y))
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -40)
+        .attr("x", -innerHeight / 2)
+        .attr("fill", "black")
+        .attr("text-anchor", "middle")
+        .text("Y Axis");
+
+    // Judul chart
+    svg.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "16px")
+        .attr("font-weight", "bold")
+        .text("K-Means Clustering Result");
+}
+
+
+//silhoutte plot
+function createSilhouettePlot(containerId, silhouetteScores, clusterLabels, width = 1000, height = 700) {
+    const margin = { top: 50, right: 150, bottom: 50, left: 50 }; // Margin kanan diperbesar untuk label
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    // Skala dan sumbu
+    const x = d3.scaleLinear()
+        .domain([-1, 1]) // Rentang nilai silhouette
+        .range([0, innerWidth]);
+
+    const y = d3.scaleBand()
+        .domain(clusterLabels) // Label cluster
+        .range([0, innerHeight])
+        .padding(0.1);
+
+    // Warna untuk setiap cluster
+    // const colors = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // SVG container
+    const svg = d3.select(`#${containerId}`)
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Gambar bar untuk setiap cluster
+    silhouetteScores.forEach((scores, clusterIndex) => {
+        // Hitung posisi Y untuk setiap cluster
+        const clusterY = y(clusterLabels[clusterIndex]);
+
+        // Gambar bar untuk setiap titik data dalam cluster
+        svg.selectAll(`.bar-cluster-${clusterIndex}`)
+            .data(scores)
+            .enter()
+            .append("rect")
+            .attr("class", `bar-cluster-${clusterIndex}`)
+            .attr("x", (d) => x(Math.min(0, d))) // Posisi X (mulai dari 0 atau nilai negatif)
+            .attr("y", (d, i) => clusterY + (i * (y.bandwidth() / scores.length))) // Posisi Y
+            .attr("width", (d) => Math.abs(x(d) - x(0))) // Lebar bar
+            .attr("height", y.bandwidth() / scores.length - 1) // Tinggi bar
+            .attr("fill", colors[clusterIndex]) // Warna cluster
+            .attr("opacity", 0.7); // Transparansi
+    });
+
+    // Garis vertikal di x = 0
+    svg.append("line")
+        .attr("x1", x(0))
+        .attr("x2", x(0))
+        .attr("y1", 0)
+        .attr("y2", innerHeight)
+        .attr("stroke", "black")
+        .attr("stroke-width", 1);
+
+    // Sumbu X (horizontal)
+    svg.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x))
+        .append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", 40)
+        .attr("fill", "black")
+        .attr("text-anchor", "middle")
+        .text("Silhouette Score");
+
+    // Sumbu Y (vertikal) di sebelah kanan
+    svg.append("g")
+        .attr("transform", `translate(${innerWidth},0)`)
+        .call(d3.axisRight(y)) // Sumbu Y di sebelah kanan
+        .selectAll("text")
+        .attr("font-size", "15px")
+        .attr("text-anchor", "start") // Label vertikal
+        .attr("dx", "0.5em"); // Jarak dari sumbu
+
+    // Judul chart
+    svg.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "20px")
+        .attr("font-weight", "bold")
+        .text("Silhouette Plot");
+}
+
+
+export { createBarChart, createPieChart, createBoxPlot, createElbowMethodChart, createScatterPlot,createSilhouettePlot};

@@ -10,7 +10,7 @@ from flask_session import Session
 from io import StringIO
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_samples, silhouette_score
 
 
 load_dotenv()
@@ -152,6 +152,8 @@ def get_data():
 
 @app.route('/result',methods=['GET'])
 def get_result():
+    kValue = request.form.get('kValue')
+    
     if request.method == "GET":
         serialize_data = redis_client.get('data_key')
         if serialize_data or None:
@@ -284,7 +286,7 @@ def elbow_method () -> str:
     distortions = []
     K = list(range(1, 10))
     for k in K:
-        kmeanModel = KMeans(n_clusters=k)
+        kmeanModel = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
         kmeanModel.fit(df)
         distortions.append(kmeanModel.inertia_)
     data_json = {
@@ -298,12 +300,43 @@ def elbow_method () -> str:
 def kmenas_clustering(k : int) -> str:
     normalized_key = retrive_data_from_redis('normalized_key')
     data_key = retrive_data_from_redis('data_key')
+    name_data = data_key['df']
     df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
-    kmeans = KMeans(n_clusters=k)
+    kmeans = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
+    name = []
+    for i in range(len(name_data)):
+        name.append(name_data[i][2])
     kmeans.fit(df)
-    data_key['kmeans'] = kmeans.labels_.tolist()
+    
+    
+    cluster = kmeans.labels_.tolist()
+    cluster_centers = kmeans.cluster_centers_.tolist()
+   
+    silhouette_score_val = silhouette_score(df, kmeans.labels_)
+    sample_silhouette_values = silhouette_samples(df, kmeans.labels_)
+    silhouette_per_cluster = []
+    for i in range(k):
+      ith_cluster_silhouette_values = \
+          sample_silhouette_values[kmeans.labels_ == i]
+      ith_cluster_silhouette_values.sort()
+      silhouette_per_cluster.append(ith_cluster_silhouette_values.tolist())
+      
+    
+    
+    data_key['kmeans']  =  {
+        'data' : normalized_key['data'],
+        'cluster' : cluster,
+        'cluster_centers' : cluster_centers,
+        'name' : name,
+        'silhouette_scor_avg' : silhouette_score_val,
+        'silhouette_per_cluster' : silhouette_per_cluster
+        
+        }
     set_data_to_redis('data_key', data_key)
-    return kmeans.labels_.tolist()
+    return data_key['kmeans']
+
+        
+    
 
 ##api
 
@@ -354,10 +387,6 @@ def get_data_from_dataframe() -> str:
         return df.values.tolist()
     else:
         return "Data not found"
-
-
-    
-
 
 @app.route('/api/data/visualization')
 def api() -> str:

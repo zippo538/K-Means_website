@@ -37,6 +37,7 @@ fetch("/api/data/visualization")
 
         console.log('nilai silhoutte per score',kmenas.silhouette_per_cluster)
 
+        // silhoutte plot
         const silhoutte_score = get_silhoutte_score(kmenas.silhouette_per_cluster);
 
         // Hitung jumlah cluster dan buat array labels
@@ -45,8 +46,6 @@ fetch("/api/data/visualization")
 
         createSilhouettePlot(ctx_silhouttePlot,silhoutte_score,labels)
         
-
-
         
 
     })

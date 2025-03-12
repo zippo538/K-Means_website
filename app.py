@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session
 from dotenv import load_dotenv
 import re
 import os
@@ -6,11 +6,13 @@ import redis
 import pandas as pd
 import numpy as np
 import json
+
 from flask_session import Session
 from io import StringIO
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
+from sklearn.decomposition import PCA
 
 
 load_dotenv()
@@ -23,7 +25,6 @@ app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_REDIS'] = redis.from_url('redis://127.0.0.1:6379')
 # Configure Redis
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=1)
-# redis_client.set('normalized_key', None)
 
 Session(app)
 
@@ -50,8 +51,10 @@ def retrive_df_from_redis(key : str) -> pd.DataFrame:
     return df
 def retrive_data_from_redis(key: str) -> str:
     retrive_data = redis_client.get(key)
-    json_data = json.loads(retrive_data.decode('utf-8'))
-    return json_data
+    if retrive_data:
+        json_data = json.loads(retrive_data.decode('utf-8'))
+        return json_data
+    return {}
 def set_data_to_redis(key: str, data) -> str: 
     data_json = json.dumps(data)
     set_data =redis_client.set(key,data_json)
@@ -128,8 +131,8 @@ def upload_file():
                     'missing_data' : missing_data,
                     'zip_select_col' : None
                 }
-            
             set_data_to_redis('data_key',data)
+            
             serialized_df = serialize_df_to_json(df)            
             redis_client.set('df_key',serialized_df)
             return render_template('index.html', data=data)
@@ -149,21 +152,40 @@ def get_data():
             return render_template('data.html', data=data)
         else:
             return render_template('data.html', data=None)
-
-@app.route('/result',methods=['GET'])
+#page result
+@app.route('/result',methods=['GET','POST'])
 def get_result():
-    kValue = request.form.get('kValue')
-    
+    get_data_key = retrive_data_from_redis('data_key')
+    if request.method=="POST" :
+        kValue = int(request.form.get('kValue'))
+        get_data_key['kmeans'] = kmenas_clustering(kValue)
+        set_data_to_redis('data_key',get_data_key)
+        update_result(get_data_key)
+        return redirect(url_for('get_result'))
     if request.method == "GET":
         serialize_data = redis_client.get('data_key')
         if serialize_data or None:
             data = json.loads(serialize_data)
             return render_template('result.html', data=data)
-        else:
-            return render_template('result.html', data=None)
-
-
-
+    else:
+        return redirect(url_for('get_result'))
+    
+def update_result(data_key) :
+    get_df = retrive_df_from_redis('df_key')
+    get_cluster = data_key['kmeans']['cluster']
+    df = pd.DataFrame(get_df)
+    df['Cluster'] = get_cluster
+    header = df.columns.tolist()
+    value= df.values.tolist()
+    data_key['update_kmeans'] = {
+        'header' : header,
+        'data' : value
+    }
+    return set_data_to_redis('data_key',data_key)
+    
+    
+    
+    
 
 #select columns 
 @app.route('/select/column',methods = ['POST','GET'])
@@ -183,12 +205,12 @@ def select_columns() ->str :
         data['zip_select_col'] = list(zip(header,sel_col.values()))
     
         set_data_to_redis('data_key',data)
-        return redirect(url_for('get_data'))
+        return redirect(url_for('index'))
     else : 
         data = redis_client.get('data_key').decode('utf-8')
         if data : 
             data = json.loads(data)
-        return render_template('data.html',data=data)
+        return redirect(url_for('index'))
 
 #method normalization 
 @app.route('/select/method', methods=['POST'])
@@ -206,13 +228,15 @@ def select_method_normalization() -> str :
         zip_select_col = json_data['zip_select_col']
         df = pd.DataFrame({col: values for col, values in zip_select_col})
         
-        select_method = request.form.get('select_method')
-        if select_method == 'minmax':
-            scaler = MinMaxScaler()
-        elif select_method == 'standard':
-            scaler = StandardScaler()
-        else:
-            return "Invalid normalization method", 400
+        # select_method = request.form.get('select_method')
+        # if select_method == 'minmax':
+        #     scaler = MinMaxScaler()
+        # elif select_method == 'standard':
+        #     scaler = StandardScaler()
+        # else:
+        #     return "Invalid normalization method", 400
+        scaler = MinMaxScaler()
+        
         normalized_data = scaler.fit_transform(df.values)
         
         # Simpan data yang dinormalisasi ke Redis
@@ -236,28 +260,28 @@ def select_correct_data() -> redirect:
     select_method = request.form.get('select_correct_data')
     df = pd.DataFrame({col: values for col, values in zip_normalized})
     print(df)
-    if select_method == 'delete':
-        df_zip_normalized= delete_specific_values(df)
-        print('sesudah di delete',df_zip_normalized.T.values.tolist())
-        normalized_data_json = {
-            'header': df.columns.tolist(),
-            'data': df_zip_normalized.values.tolist()
-        }
-        data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.values.tolist()))
-        set_data_to_redis('data_key',data_key)
-        set_data_to_redis('normalized_key',normalized_data_json)
-        return redirect(url_for('get_data'))        
-    elif select_method == 'replace':
-        arr_df = np.array(df.values)
-        df_zip_normalized = fill_zeros_with_last(arr_df)
-        normalized_data_json = {
-            'header': df.columns.tolist(),
-            'data': df_zip_normalized.T.tolist()
-        }
-        data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.tolist()))
-        set_data_to_redis('data_key',data_key)
-        set_data_to_redis('normalized_key',normalized_data_json)
-        return redirect(url_for('get_data'))        
+    # if select_method == 'delete':
+    #     df_zip_normalized= delete_specific_values(df)
+    #     print('sesudah di delete',df_zip_normalized.T.values.tolist())
+    #     normalized_data_json = {
+    #         'header': df.columns.tolist(),
+    #         'data': df_zip_normalized.values.tolist()
+    #     }
+    #     data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.values.tolist()))
+    #     set_data_to_redis('data_key',data_key)
+    #     set_data_to_redis('normalized_key',normalized_data_json)
+    #     return redirect(url_for('get_data'))        
+    # elif select_method == 'replace':
+    arr_df = np.array(df.values)
+    df_zip_normalized = fill_zeros_with_last(arr_df)
+    normalized_data_json = {
+        'header': df.columns.tolist(),
+        'data': df_zip_normalized.T.tolist()
+    }
+    data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.tolist()))
+    set_data_to_redis('data_key',data_key)
+    set_data_to_redis('normalized_key',normalized_data_json)
+    return redirect(url_for('get_data'))        
         
     
 
@@ -281,63 +305,73 @@ def fill_zeros_with_last(arr) -> np.ndarray:
 
 def elbow_method () -> str:
     normalized_key = retrive_data_from_redis('normalized_key')
-    data_key = retrive_data_from_redis('data_key')
-    df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
-    distortions = []
-    K = list(range(1, 10))
-    for k in K:
-        kmeanModel = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
-        kmeanModel.fit(df)
-        distortions.append(kmeanModel.inertia_)
-    data_json = {
-        'K': K,
-        'distortions': distortions
-    }
-    data_key['elbow_method'] = list(zip(K,distortions))
-    set_data_to_redis('data_key', data_key)
-    return data_json
+    if normalized_key['data']: 
+        data_key = retrive_data_from_redis('data_key')
+        df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
+        distortions = []
+        K = list(range(1, 10))
+        for k in K:
+            kmeanModel = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
+            kmeanModel.fit(df)
+            distortions.append(kmeanModel.inertia_)
+        data_json = {
+            'K': K,
+            'distortions': distortions
+        }
+        data_key['elbow_method'] = list(zip(K,distortions))
+        set_data_to_redis('data_key', data_key)
+        return data_json
+    else :
+        normalized_data = {
+                'header': None,
+                'data' : None
+        } 
+        return set_data_to_redis('normalized_key',normalized_data)
+        
 
 def kmenas_clustering(k : int) -> str:
     normalized_key = retrive_data_from_redis('normalized_key')
-    data_key = retrive_data_from_redis('data_key')
-    name_data = data_key['df']
-    df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
-    kmeans = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
-    name = []
-    for i in range(len(name_data)):
-        name.append(name_data[i][2])
-    kmeans.fit(df)
-    
-    
-    cluster = kmeans.labels_.tolist()
-    cluster_centers = kmeans.cluster_centers_.tolist()
-   
-    silhouette_score_val = silhouette_score(df, kmeans.labels_)
-    sample_silhouette_values = silhouette_samples(df, kmeans.labels_)
-    silhouette_per_cluster = []
-    for i in range(k):
-      ith_cluster_silhouette_values = \
-          sample_silhouette_values[kmeans.labels_ == i]
-      ith_cluster_silhouette_values.sort()
-      silhouette_per_cluster.append(ith_cluster_silhouette_values.tolist())
-      
-    
-    
-    data_key['kmeans']  =  {
-        'data' : normalized_key['data'],
-        'cluster' : cluster,
-        'cluster_centers' : cluster_centers,
-        'name' : name,
-        'silhouette_scor_avg' : silhouette_score_val,
-        'silhouette_per_cluster' : silhouette_per_cluster
+    print(f"clustering with {k}")
+    if normalized_key['data'] : 
+        data_key = retrive_data_from_redis('data_key')
+        name_data = data_key['df']
+        # Mengurangi dimensi data menggunakan PCA 
+        pca = PCA(n_components=2)
+        reduced_data = pca.fit_transform(normalized_key['data'])
+        # Mengunakan K-Means pada data yang telah direduksi
+        kmeans = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
+        kmeans.fit(reduced_data)
         
-        }
-    set_data_to_redis('data_key', data_key)
-    return data_key['kmeans']
-
+        data_to_json = reduced_data.tolist()
+        # Mengambil nama siswa    
+        name = []
+        for i in range(len(name_data)):
+            name.append(name_data[i][2])
         
+        # Mengambil cluster label dan centroid
+        cluster = kmeans.labels_.tolist()
+        cluster_centers = kmeans.cluster_centers_.tolist()
     
-
+        silhouette_score_val = silhouette_score(reduced_data, kmeans.labels_)
+        sample_silhouette_values = silhouette_samples(reduced_data, kmeans.labels_)
+        silhouette_per_cluster = []
+        for i in range(k):
+            ith_cluster_silhouette_values = \
+                sample_silhouette_values[kmeans.labels_ == i]
+            ith_cluster_silhouette_values.sort()
+            silhouette_per_cluster.append(ith_cluster_silhouette_values.tolist())
+    
+        data_key =  {
+            'data' : data_to_json,
+            'cluster' : cluster,
+            'cluster_centers' : cluster_centers,
+            'name' : name,
+            'silhouette_scor_avg' : silhouette_score_val,
+            'silhouette_per_cluster' : silhouette_per_cluster
+            
+            }
+        return data_key     
+    
 ##api
 
 def get_null_or_missing_value ()->str : 
@@ -390,14 +424,16 @@ def get_data_from_dataframe() -> str:
 
 @app.route('/api/data/visualization')
 def api() -> str:
-    data= {
-        'missing_value' : get_null_or_missing_value(),
-        'sum_status'    : sum_status(),
-        'top_student_with_zero_' : top_students_with_zero(),
-        'elbow_method' : elbow_method(),
-        'kmeans' : kmenas_clustering(3),
-    }
-    return data
+    get_kmeans = retrive_data_from_redis('data_key')['kmeans']
+    if get_kmeans : 
+        data = {
+            'missing_value': get_null_or_missing_value(),
+            'sum_status': sum_status(),
+            'top_student_with_zero_': top_students_with_zero(),
+            'elbow_method': elbow_method(),
+            'kmeans' : get_kmeans
+        }
+        return data
 
 @app.route('/api/data/boxplot')
 def api_dataframe() -> str: 
@@ -408,7 +444,10 @@ def api_dataframe() -> str:
     data = data.values.tolist()
     header = df.columns[4:].tolist()
     return {'data': data, 'header': header}
+
+
     
+
 
 if __name__ == '__main__':
     app.run(debug=True)

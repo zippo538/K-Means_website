@@ -52,8 +52,24 @@
         </div>
     </div>
     <div class="row justify-content-center align-items-center">
-        <div id="elbow_method" class="card_box chart_container"></div>
+        <div id="elbow_method" class="card_box chart_container col-auto"></div>
+    </div>
+    <div class="justify-content-center align-items-center">
+        <form action="{{url_for("get_result")}}" method="POST" class="d-flex flex-column align-items-center" >
+            <div class="mb-3 mt-1">
+            <label for="kValue" class="form-label">Masukkan nilai k</label>
+            </div>
+            <div class="row">
+                <div class="col-md-10">
+                    <input type="number" class="form-control" id="kValue" name="kValue" min="2" max="10" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark">Submit</button>
+                </div>
+                
+            </div>
+            </div>
+        </form>
     </div>
 </div>
-
 {%endblock%}

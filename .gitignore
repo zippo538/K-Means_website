@@ -3,3 +3,6 @@ materio-bootstrap-html-admin-template-free/
 session_flask
 .env
 node_modules/
+__pycache__/
+api_groq.py
+groq_llm.py

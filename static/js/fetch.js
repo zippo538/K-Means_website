@@ -9,53 +9,64 @@ import {createBarChart,createPieChart,createBoxPlot,createElbowMethodChart, crea
     
 
     // Data for the chart
-fetch("/api/data/visualization")
-    .then(response=> response.json())
-    .then(data => {
-        //bar chart missing value
-        const missing_value =  data.missing_value
-        createBarChart(ctx_data_missing_or_null, missing_value);
+// fetch.js
+document.addEventListener("DOMContentLoaded", function() {
+    const path = window.location.pathname;
 
-        // pie chart sum_status_siswa
-        const sum_status = data.sum_status
-        createPieChart(ctx_sum_status_siswa, sum_status);
+    if (path === "/") {
+        // Halaman index.html (Understanding Data)
+        fetch("/api/data/visualization")
+            .then(response => response.json())
+            .then(data => {
+                // Bar chart missing value
+                const missing_value = data.missing_value;
+                createBarChart(ctx_data_missing_or_null, missing_value);
 
-        // elbow method 
-        const distortion = data.elbow_method
-        createElbowMethodChart(ctx_elbow_method, distortion);
+                // Pie chart sum_status_siswa
+                const sum_status = data.sum_status;
+                createPieChart(ctx_sum_status_siswa, sum_status);
 
-        // kmeans cluster
-        const kmenas = data.kmeans
-        const data_kmeans = kmenas.data
-        const cluster = kmenas.cluster
-        const cluster_center = kmenas.cluster_centers
-        const data_name = kmenas.name 
-        const json_kmeans = get_data_kmeans(data_kmeans,cluster,data_name)
-        const json_cluster_center = get_cluster_center(cluster_center)
+                // Boxplot
+                fetch("/api/data/boxplot")
+                    .then(response => response.json())
+                    .then(data => {
+                        const boxplot = data.data;
+                        createBoxPlot(ctx_boxplot, boxplot);
+                    });
+            });
+    } else if (path === "/data") {
+        // Halaman data.html (Normalization)
+        fetch("/api/data/elbowMethod")
+            .then(response => response.json())
+            .then(data => {
+                const distortion = data.elbow_method;
+                createElbowMethodChart(ctx_elbow_method, distortion);
+            });
+    } else if (path === "/result") {
+        // Halaman result.html (Result)
+        fetch("/api/data/kmeans")
+            .then(response => response.json())
+            .then(data => {
+                // KMeans clustering
+                const kmeans = data.kmeans;
+                const data_kmeans = kmeans.data;
+                const cluster = kmeans.cluster;
+                const cluster_center = kmeans.cluster_centers;
+                const data_name = kmeans.name;
+                const json_kmeans = get_data_kmeans(data_kmeans, cluster, data_name);
+                const json_cluster_center = get_cluster_center(cluster_center);
 
-        createScatterPlot(ctx_kmeans_cluster, json_kmeans, json_cluster_center);
+                createScatterPlot(ctx_kmeans_cluster, json_kmeans, json_cluster_center);
 
-        console.log('nilai silhoutte per score',kmenas.silhouette_per_cluster)
+                // Silhouette plot
+                const silhouette_score = get_silhoutte_score(kmeans.silhouette_per_cluster);
+                const numClusters = silhouette_score.length;
+                const labels = Array.from({ length: numClusters }, (_, i) => `Cluster ${i}`);
 
-        // silhoutte plot
-        const silhoutte_score = get_silhoutte_score(kmenas.silhouette_per_cluster);
-
-        // Hitung jumlah cluster dan buat array labels
-        const numClusters = silhoutte_score.length;
-        const labels = Array.from({ length: numClusters }, (_, i) => `Cluster ${i + 1}`);
-
-        createSilhouettePlot(ctx_silhouttePlot,silhoutte_score,labels)
-        
-        
-
-    })
-fetch("/api/data/boxplot")
-    .then(response=> response.json())
-    .then(data => {
-        //boxplot
-        const boxplot = data.data
-        createBoxPlot(ctx_boxplot, boxplot);
-    })
+                createSilhouettePlot(ctx_silhouttePlot, silhouette_score, labels);
+            });
+    }
+});
 // Fungsi untuk membuat Bar Chart
 
 function get_data_kmeans(data, cluster_centroid,name) {

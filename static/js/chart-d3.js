@@ -311,6 +311,20 @@ function createElbowMethodChart(containerId, inertiaData, width = 800, height = 
     const line = d3.line()
         .x((d, i) => x(i + 1)) // Jumlah cluster dimulai dari 1
         .y((d) => y(d));
+    
+    // tooltip
+    const tooltip = d3.select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("background", "white")
+        .style("border", "1px solid #ccc")
+        .style("padding", "10px")
+        .style("border-radius", "5px")
+        .style("pointer-events", "none"); 
+
+
 
     // Gambar garis
     svg.append("path")
@@ -331,7 +345,23 @@ function createElbowMethodChart(containerId, inertiaData, width = 800, height = 
         .attr("cy", (d) => y(d))
         .attr("r", 5)
         .attr("fill", colors[1])
-        .attr("stroke-width", 4);
+        .attr("stroke-width", 4)
+        .on("mouseover", (event, d) => {
+            // Tampilkan tooltip
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", 0.9);
+            tooltip.html(`distortions: ${d}`)
+                .style("left", `${event.pageX + 5}px`)
+                .style("top", `${event.pageY - 28}px`);
+        })
+        .on("mouseout", () => {
+            // Sembunyikan tooltip
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+        ;
 
     // Sumbu X
     svg.append("g")
@@ -446,7 +476,7 @@ function createScatterPlot(containerId, data, clusterCenters, width = 800, heigh
             tooltip.transition()
                 .duration(200)
                 .style("opacity", 0.9);
-            tooltip.html(`Cluster: ${d.cluster}<br>Nama: ${d.name}`)
+            tooltip.html(`Cluster: ${d.cluster}<br>Nama: ${d.name}<br> X : ${d.x} <br> Y : ${d.y}`)
                 .style("left", `${event.pageX + 5}px`)
                 .style("top", `${event.pageY - 28}px`);
         })

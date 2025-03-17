@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+from io import BytesIO
+from flask import Flask, jsonify, render_template, request, redirect, send_file, url_for, session
 from dotenv import load_dotenv
 import re
 import os
@@ -6,14 +7,14 @@ import redis
 import pandas as pd
 import numpy as np
 import json
-
+import math
 from flask_session import Session
-from io import StringIO
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.decomposition import PCA
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 load_dotenv()
 app = Flask(__name__)
@@ -135,7 +136,7 @@ def upload_file():
             
             serialized_df = serialize_df_to_json(df)            
             redis_client.set('df_key',serialized_df)
-            return render_template('index.html', data=data)
+            return redirect(url_for('index'))
         else:
             return "File harus berupa CSV", 400
     except Exception as e :
@@ -153,22 +154,58 @@ def get_data():
         else:
             return render_template('data.html', data=None)
 #page result
-@app.route('/result',methods=['GET','POST'])
+@app.route('/result', methods=['GET', 'POST'])
 def get_result():
     get_data_key = retrive_data_from_redis('data_key')
-    if request.method=="POST" :
+    
+    if request.method == "POST":
+        # Ambil nilai kValue dari form
         kValue = int(request.form.get('kValue'))
+        
+        # Perbarui hasil clustering dengan kValue yang baru
         get_data_key['kmeans'] = kmenas_clustering(kValue)
-        set_data_to_redis('data_key',get_data_key)
+        
+        # Simpan data yang diperbarui ke Redis
+        set_data_to_redis('data_key', get_data_key)
+        
+        # Perbarui hasil di Redis
         update_result(get_data_key)
+        
+        # Redirect ke halaman result untuk menampilkan hasil yang diperbarui
         return redirect(url_for('get_result'))
+    
     if request.method == "GET":
-        serialize_data = redis_client.get('data_key')
-        if serialize_data or None:
-            data = json.loads(serialize_data)
-            return render_template('result.html', data=data)
-    else:
-        return redirect(url_for('get_result'))
+        # Ambil parameter halaman dari URL (default: halaman 1)
+        
+        page = request.args.get('page', 1, type=int)
+        
+        # Jumlah data per halaman
+        per_page = 10
+        
+        # Ambil data clustering dari Redis
+        if 'result_kmeans' in get_data_key:
+            clustering_data = get_data_key['result_kmeans']
+            header = clustering_data['header']
+            
+            # Hitung total halaman
+            total_data = len(clustering_data['data'])  # Jumlah total data
+            total_pages = math.ceil(total_data / per_page)
+            
+            # Ambil data untuk halaman yang diminta
+            start = (page - 1) * per_page
+            end = start + per_page
+            paginated_data = clustering_data['data'][start:end]
+            
+            # Tambahkan informasi pagination ke data
+            clustering_data['paginated_data'] = paginated_data
+            clustering_data['page'] = page
+            clustering_data['total_pages'] = total_pages
+        else:
+            clustering_data = None
+        return render_template('result.html', data=get_data_key, clustering_data=clustering_data, header = header)
+        
+    
+    return redirect(url_for('get_result'))
     
 def update_result(data_key) :
     get_df = retrive_df_from_redis('df_key')
@@ -177,14 +214,74 @@ def update_result(data_key) :
     df['Cluster'] = get_cluster
     header = df.columns.tolist()
     value= df.values.tolist()
-    data_key['update_kmeans'] = {
+    data_key['result_kmeans'] = {
         'header' : header,
         'data' : value
     }
     return set_data_to_redis('data_key',data_key)
+
+@app.route('/download/excel')
+def download_excel():
+    # Ambil data dari Redis
+    get_data_key = retrive_data_from_redis('data_key')
     
+    if 'result_kmeans' in get_data_key:
+        clustering_data = get_data_key['result_kmeans']
+        
+        # Buat DataFrame dari data clustering
+        df = pd.DataFrame(data=clustering_data['data'],columns=clustering_data['header'])
+        # Simpan DataFrame ke dalam file Excel
+        excel_file = BytesIO()
+        with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Clustering Result')
+        
+        excel_file.seek(0)
+        return send_file(
+            excel_file,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='clustering_result.xlsx'
+        )
+    else:
+        return "No clustering data available", 404
+
+@app.route('/download/pdf')
+def download_pdf():
+    # Ambil data dari Redis
+    get_data_key = retrive_data_from_redis('data_key')
     
-    
+    if 'kmeans' in get_data_key:
+        clustering_data = get_data_key['kmeans']
+        
+        # Buat file PDF
+        pdf_file = BytesIO()
+        pdf = canvas.Canvas(pdf_file, pagesize=letter)
+        
+        # Tambahkan judul
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(100, 750, "Clustering Result")
+        
+        # Tambahkan data ke PDF
+        pdf.setFont("Helvetica", 12)
+        y = 700
+        for i, (name, cluster) in enumerate(zip(clustering_data['name'], clustering_data['cluster'])):
+            pdf.drawString(100, y, f"{i+1}. {name} - Cluster {cluster}")
+            y -= 20
+            if y < 50:  # Jika mencapai batas bawah, buat halaman baru
+                pdf.showPage()
+                y = 750
+        
+        pdf.save()
+        pdf_file.seek(0)
+        return send_file(
+            pdf_file,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='clustering_result.pdf'
+        )
+    else:
+        return "No clustering data available", 404
+      
     
 
 #select columns 
@@ -423,17 +520,13 @@ def get_data_from_dataframe() -> str:
         return "Data not found"
 
 @app.route('/api/data/visualization')
-def api() -> str:
-    get_kmeans = retrive_data_from_redis('data_key')['kmeans']
-    if get_kmeans : 
-        data = {
+def api() -> str:    
+    data = {
             'missing_value': get_null_or_missing_value(),
             'sum_status': sum_status(),
             'top_student_with_zero_': top_students_with_zero(),
-            'elbow_method': elbow_method(),
-            'kmeans' : get_kmeans
-        }
-        return data
+            }
+    return data
 
 @app.route('/api/data/boxplot')
 def api_dataframe() -> str: 
@@ -445,9 +538,20 @@ def api_dataframe() -> str:
     header = df.columns[4:].tolist()
     return {'data': data, 'header': header}
 
-
+@app.route('/api/data/kmeans')
+def api_kmeans() :    
+    get_data = retrive_data_from_redis('data_key')
+    if 'kmeans' in get_data : 
+        get_kmeans = get_data['kmeans']
+        data = {'kmeans' : get_kmeans}
+        return data
+    
+@app.route('/api/data/elbowMethod')
+def api_eblowMethod() : 
+    data = {'elbow_method': elbow_method()}
+    return data
     
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,port=8080)

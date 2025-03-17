@@ -1,0 +1,197 @@
+:root {
+    --widht-table: 580 ; 
+    --heigh-table: 400; 
+}
+.navbar-nav .nav-link.active {
+    background-color: #343a40; /* Warna gelap */
+    color: white;
+    border-radius: 5px;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+main {
+    margin : 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #8DA0CB; /* Biru keunguan */
+    color: white;
+    padding: 10px;
+    text-align: left;
+    text-align: center;
+}
+
+tr:nth-child(even) {
+    background-color: #EFF3FF; /* Biru sangat muda */
+}
+
+tr:nth-child(odd) {
+    background-color: white;
+}
+
+
+h2 {
+    color: #333;
+    text-align: center;
+}
+
+form {
+    margin-bottom: 20px;
+}
+
+.box_attributes {
+    border: solid black;
+    border-radius: 0px;
+    height: 400px;
+    margin-top: 10px;
+    border-radius: 15px;
+    overflow-x: auto; /* Scroll horizontal */
+    overflow-y: auto; /* Scroll vertikal */
+}
+
+.box_attributes p {
+    display: inline-block;
+    padding-right: 65px;
+    margin: 12px;
+}
+
+.scrollAble {
+    overflow: auto;
+    width: 100%;
+    height: 380px;
+}
+
+.scrollAble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.scrollAble .select-columns {
+    padding-top: 10px;
+    margin-top: 20px;
+    margin: 12px;
+    width: 100%;
+}
+
+.box_columns_selected {
+    border: solid black;
+    border-radius: 15px;
+    height: 500px; /* Tinggi tetap */
+    margin-top: 10px;
+    overflow-x: auto; /* Scroll horizontal */
+    overflow-y: auto; /* Scroll vertikal */
+    display: flex;
+    justify-content: center; /* Pusatkan secara horizontal */
+    align-items: center; /* Pusatkan secara vertikal */
+}
+
+.scrollAble_columns_selected {
+    max-height: 100%;
+    overflow: auto;
+    width: 100%;
+}
+
+.scrollAble_columns_selected table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.table_attr {
+    font-size: 12px;
+    margin-top: 15px !important;
+    font: bolder;
+}
+
+.box_information {
+    font-size: 12;
+    margin-top: 15px ;
+    font-size: medium;
+}
+
+.chart_container {
+    width: 100%;
+    max-width: 800px; /* Atur lebar maksimum sesuai kebutuhan */
+    margin: 0 auto;
+    display: flex;
+    justify-content: center; /* Pusatkan secara horizontal */
+    align-items: center; /* Pusatkan secara vertikal */
+    height: 500px; /* Atur tinggi sesuai kebutuhan */
+    max-height: 500px;
+}
+
+.chart_container svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* bar chart */
+.bar:hover {
+    fill: orange;
+}
+
+/* pie chart */
+.arc path:hover {
+    fill: orange;
+}
+
+/* box plot */
+.box:hover {
+    fill: orange;
+}
+
+.card_box {
+    border: 1px solid #ccc; /* Border untuk card */
+    border-radius: 10px; /* Border radius untuk card */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Shadow untuk card */
+    padding: 20px; /* Padding untuk card */
+    background-color: #fff; /* Warna latar belakang untuk card */
+    margin-top: 20px; /* Margin atas untuk card */
+}
+
+.card_box_boxplot {
+    width: 1600px;
+    border: 1px solid #ccc; /* Border untuk card */
+    border-radius: 10px; /* Border radius untuk card */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Shadow untuk card */
+    padding: 20px; /* Padding untuk card */
+    background-color: #fff; /* Warna latar belakang untuk card */
+    margin-top: 20px; /* Margin atas untuk card */
+}
+
+
+/* BoxPlot */
+.box {
+    fill-opacity: 0.7;
+    stroke: #000;
+    stroke-width: 1.5;
+}
+
+.median {
+    stroke: #000;
+    stroke-width: 2;
+}
+
+.whisker {
+    stroke: #000;
+    stroke-width: 1.5;
+}

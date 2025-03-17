@@ -1,19 +1,203 @@
 {% extends "base.html" %}
 
-{% block content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload CSV</title>
-</head>
-<body>
-    <h1>Upload CSV File</h1>
-    <form action="{{url_for("home")}}" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".csv">
-        <button type="submit">Upload</button>
+{%block content%}
+<!-- Main Content -->
+            <!-- Content -->
+             <div class="row ">
+                 <div class="col-sm float-start">
+                     <h2 >Upload Data CSV</h2>
+                     <!-- Form Upload CSV -->
+                     <form action="/upload" method="POST" enctype="multipart/form-data">
+                         <div class="mb-3">
+                             <label for="csvFile" class="form-label">Pilih file CSV</label>
+                             <input type="file" class="form-control" id="csvFile" name="csvFile" accept=".csv" required>
+                         </div>
+                         <button type="submit" class="btn btn-primary bg-gray-100">Upload</button>
+                     </form>
+                </div>
+                
+                {%if data%}
+                <div class="col-sm box_information">
+                    <p>Information</p>
+                        <p>Attributes : {{data.attributes}}</p>
+                        <p>Rows : {{data.rows}}</p>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+            <div class="row position-relative">
+                <div class="col-md-6 ">
+                        <div id="data_missing_or_null" class='chart_container card_box '></div>
+                </div>
+                <div class="col-md-6 ">
+                        <div id="sum_status_siswa" class='chart_container card_box '></div>
+                </div>
+            </div>
+            <div class="col-md-6 ">
+                <div class="position-relative end-0 bottom-0" style="width: 80%; margin: auto;">
+                    <div id="boxplot" class="card_box_boxplot"></div>
+                </div>
+            </div>
+                <hr>
+                <!-- Data Table -->
+                <div class="row text-center mt-3">
+                    <div class="col-md-offset-6 col-md-6  ">
+                        <h2>Data Table</h2>
+                        <div class="box_attributes">
+                            <div class="scrollAble ">
+                            <table>
+                                <thead >
+                                    <tr>
+                                        <tr>
+                                            {% if data  %}
+                                            {% for head in data.header %}
+                                            <th class="text-center" scope="col">{{head}}</th>
+                                            {% endfor %}
+                                            {% endif %}                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody >
+                                    {% if data %}
+                                            {% for datas in data.df  %}
+                                            <tr>
+                                                {% for data in datas %}
+                                                <td>{{data}}</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    {%else%}
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada data</td>
+                                        </tr>
+                                    {%endif%}
+                                </tbody>
+                            </table>  
+                        </div>
+                    </div>                    
+                    </div>
+
+                    <!-- header -->
+                     {%if data%}
+                    <div class="col-md-offset-6 col-md-6">
+                        <h2>Overview Colums</h2>
+                        <div class="box_attributes">
+                            <div class="scrollAble">
+                                <div >
+                                    <table >
+                                        <thead >
+                                            <tr>
+                                                <th>No.</th>
+                                                <th>Name</th>
+                                                {% if data.type !='object' %}
+                                                    <th>Minimum</th>
+                                                    <th>Maximum</th>
+                                                    <th>Mean</th>
+                                                {% endif %}
+                                                <th>Missing Data</th>
+                                                <th>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% if data.zipped_data %}
+                                                {% for header,type,maxs,mins,means,missing_data in data.zipped_data  %}
+                                                <tr>
+                                                    <td>{{loop.index}}</td>
+                                                    <td>{{header}}</td>
+                                                    {% if type != 'object' %}
+                                                    <td>{{mins}}</td>
+                                                    <td>{{maxs}}</td>
+                                                    <td>{{means}}</td>
+                                                    {% else %}
+                                                        <td> - </td>
+                                                        <td> - </td>
+                                                        <td> - </td>
+                                                    {% endif %}
+                                                    <td>{{missing_data}}</td>
+                                                    <td>{{type}}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </tbody>
+                                        {%else%}
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada columns</td>
+                                        </tr>
+                                {%endif%}
+                                    </table>                    
+                            </div>                               
+                            </div>
+                        </div>
+                </div>
+        </div> 
+        <hr>
+    <!-- Select Columns -->
+     <div class="row mt-3">
+        <div class="col-md-6">
+            <h2>Select Columns</h2>
+        </div>
+        <div class="col-md-6">
+            <h2>View Columns</h2>
+        </div>
+     </div>
+    <form class="p-md-3" action="{{ url_for('select_columns') }}" method="POST"> 
+        <div class="row">
+            <div class="col-md-2">
+                <label for="columns_to_select">Select columns to prepocessing:</label>
+            </div>
+            <input class="btn btn-dark col-md-2 " type="submit" name="select_columns" value="select Columns">
+        </div>
+    
+        <div class="row">
+            <div class="col-md-6">
+                <div class="box_attributes">
+                    <div class="scrollAble">
+                            <table class="select-columns">
+                                <thead>
+                                    <th>Name</th>
+                                </thead>
+                                <tbody>
+                                    {%if data%}
+                                        {%for head in data.header%}
+                                    <tr>
+                                        <td> <input name="columns_to_delete" id="columns_to_delete" value="{{head}}" type="checkbox">{{head}}</td>
+                                    </tr>
+                                        {%endfor%}
+                                    {%endif%}
+                                </tbody>
+                            </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 ">
+                <div class="box_attributes">
+                    <div class="scrollAble">
+                        <table>
+                            <thead>
+                                    <tr>
+                                {%if data.zip_select_col%}
+                                        <th>No</th>
+                                        {% for head, value in data.zip_select_col%}
+                                            <th>{{ head }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for i in range(data.zip_select_col[0][1]|length) %}
+                                    <tr>
+                                        <td>{{ i + 1 }}</td>
+                                        {% for head, value in data.zip_select_col %}
+                                            <td>{{ value[i] }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
     </form>
-</body>
-</html>
-{% endblock %}
+{%endblock%}
+
+
+
+

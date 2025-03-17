@@ -1,0 +1,75 @@
+{% extends 'base.html'%}
+{%block content%}
+<div class="container">
+    <div class="row justify-content-center align-items-center">
+        <div class="col-md-12 text-center">
+            <h2>Column has been selected</h2>
+            <div class="box_columns_selected">
+                <div class="scrollAble_columns_selected">
+                    <table>
+                        <thead>
+                            <tr>
+                                {% if data.zip_select_col %}
+                                    <th>No</th>
+                                    {% for head, value in data.zip_select_col %}
+                                        <th>{{ head }}</th>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if data.zip_select_col %}
+                                {% for i in range(data.zip_select_col[0][1]|length) %}
+                                    <tr>
+                                        <td>{{ i + 1 }}</td>
+                                        {% for head, value in data.zip_select_col %}
+                                            <td>{{ value[i] }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <label for="Warning" style="color : red">*Select Method Correct Data First</label>
+    <div class="row justify-content-center align-items-center text-center">
+        <!-- Normalization -->
+        <div class="col-md-6 ">
+            <label for="select_method_normalization">Method Normalization</label>
+            <form action="{{ url_for('select_method_normalization') }}" method="POST">
+                <input class="btn btn-dark col-md-5" type="submit" name="select_method_normalization" value="MinMax Scaler">
+            </form>
+        </div>
+        <div class="col-md-6 ">
+            <!-- Select Correct data -->
+            <label for="select_correct_data">Select Correct Data</label>
+            <form action="{{ url_for('select_correct_data') }}" method="POST">
+                <input class="btn btn-dark col-md-5" type="submit" name="select_correct_data" value="Replace With Mean">
+            </form>
+        </div>
+    </div>
+    <div class="row justify-content-center align-items-center">
+        <div id="elbow_method" class="card_box chart_container col-auto"></div>
+    </div>
+    <div class="justify-content-center align-items-center">
+        <form action="{{url_for("get_result")}}" method="POST" class="d-flex flex-column align-items-center" >
+            <div class="mb-3 mt-1">
+            <label for="kValue" class="form-label">Masukkan nilai k</label>
+            </div>
+            <div class="row">
+                <div class="col-md-10">
+                    <input type="number" class="form-control" id="kValue" name="kValue" min="2" max="10" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark">Submit</button>
+                </div>
+                
+            </div>
+            </div>
+        </form>
+    </div>
+</div>
+{%endblock%}

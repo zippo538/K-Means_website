@@ -211,7 +211,7 @@ def update_result(data_key) :
     get_df = retrive_df_from_redis('df_key')
     get_cluster = data_key['kmeans']['cluster']
     df = pd.DataFrame(get_df)
-    df['Cluster'] = get_cluster
+    df['cluster'] = get_cluster
     header = df.columns.tolist()
     value= df.values.tolist()
     data_key['result_kmeans'] = {

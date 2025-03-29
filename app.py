@@ -1,6 +1,8 @@
 from io import BytesIO
-from flask import Flask, jsonify, render_template, request, redirect, send_file, url_for, session
+from flask import Flask, render_template, request, redirect, send_file, url_for
 from dotenv import load_dotenv
+from markdown_utils.renderer import MarkdownRenderer
+from pathlib import Path
 import re
 import os
 import redis
@@ -33,6 +35,7 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
 
+
 ## route
 
 @app.route('/')
@@ -40,9 +43,9 @@ def index():
     serialize_data = redis_client.get('data_key')
     if serialize_data:
         data = json.loads(serialize_data)
-        return render_template('index.html', data=data)
+        return render_template('pages/index.html', data=data,title='Data Profiling')
     else:
-        return render_template('index.html', data=None)
+        return render_template('pages/index.html', data=None,title='Data Profiling')
 def serialize_df_to_json(df):
     return df.to_json(orient='split')
 def retrive_df_from_redis(key : str) -> pd.DataFrame:
@@ -86,10 +89,7 @@ def upload_file():
 
         if file and file.filename.endswith('.csv'):
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            rename =  'data.csv'
-            file_path_rename =  os.path.join(app.config['UPLOAD_FOLDER'], rename)
             file.save(filepath)
-            os.rename(filepath, file_path_rename)
             df= pd.read_csv(filepath)
             name = file.filename
                         
@@ -150,9 +150,9 @@ def get_data():
         serialize_data = redis_client.get('data_key')
         if serialize_data or None:
             data = json.loads(serialize_data)
-            return render_template('data.html', data=data)
+            return render_template('pages/data.html', data=data,title='Normalization')
         else:
-            return render_template('data.html', data=None)
+            return render_template('pages/data.html', data=None,title='Normalization')
 #page result
 @app.route('/result', methods=['GET', 'POST'])
 def get_result():
@@ -202,7 +202,7 @@ def get_result():
             clustering_data['total_pages'] = total_pages
         else:
             clustering_data = None
-        return render_template('result.html', data=get_data_key, clustering_data=clustering_data, header = header)
+        return render_template('pages/result.html', data=get_data_key, clustering_data=clustering_data, header = header,title='Result')
         
     
     return redirect(url_for('get_result'))
@@ -469,6 +469,13 @@ def kmenas_clustering(k : int) -> str:
             }
         return data_key     
     
+
+## render markdown
+@app.route('/rekomendasi')
+def rekomendasi() : 
+    md_renderer = MarkdownRenderer()
+    return md_renderer.render_file('rekomendasi_guru.md')
+
 ##api
 
 def get_null_or_missing_value ()->str : 
@@ -532,7 +539,7 @@ def api() -> str:
 def api_dataframe() -> str: 
     df = retrive_df_from_redis('df_key')
     data = df.iloc[:, 4:]
-    delete_col = ['Status','Gel','Jumlah absen \n TWK']
+    delete_col = ['Status','Gel','Jumlah absen TWK','Jumlah absen TIU','Jumlah absen TKP']
     data = data.drop(delete_col, axis=1)
     data = data.values.tolist()
     header = df.columns[4:].tolist()

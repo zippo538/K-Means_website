@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{%block content%}
+{% block styles %}<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">{% endblock %}
+
+{% block content %}
 <!-- Main Content -->
             <!-- Content -->
              <div class="row ">
@@ -196,7 +198,12 @@
                     </div>
                 </div>
     </form>
-{%endblock%}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script type="module" src="/static/js/fetch.js"></script>
+{% endblock %}
 
 
 

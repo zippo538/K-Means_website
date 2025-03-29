@@ -1,0 +1,45 @@
+.markdown-content {
+    line-height: 1.8;
+    font-size: 1.1rem;
+}
+
+.markdown-content h1, 
+.markdown-content h2 {
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #eaecef;
+    margin-top: 1.5em;
+}
+
+.markdown-content table {
+    width: 100%;
+    margin: 1em 0;
+    border-collapse: collapse;
+}
+
+.markdown-content table th {
+    background-color: #f8f9fa;
+}
+
+.markdown-content pre {
+    padding: 1em;
+    border-radius: 0.5em;
+    background: #f8f9fa;
+    overflow-x: auto;
+}
+
+.toc ul {
+    list-style-type: none;
+    padding-left: 1em;
+}
+a.headerlink {
+    display: none !important;
+}
+table, th, td {
+    border: 1px solid #000000;
+    text-align: left;
+    text-align: center;
+}
+h1 {
+    color: #333;
+    text-align: center;
+}

@@ -1,6 +1,4 @@
-No,id user,"Nama 
-panggilan","Nama 
-lengkap",1,2,3,4,5,6,7,8,9,10,11 CBP,12,13 CBP,14,Gel,Status,Jumlah absen TWK,Jumlah absen TIU,Jumlah absen TKP
+No,id user,Nama panggilan,Nama lengkap,1,2,3,4,5,6,7,8,9,10,11 CBP,12,13 CBP,14,Gel,Status,Jumlah absen TWK,Jumlah absen TIU,Jumlah absen TKP
 1,1001,Abid,Muhammad Abid huzaifi,0,0,0,0,0,0,303,350,361,344,344,0,303,362,2,Tidak Lulus,8,,
 2,1002,Adit Batang,Jannata Aditama,378,381,346,335,391,421,455,415,446,420,445,426,320,459,2,Lulus,31,,
 3,1003,Alif,Ali Fathir Aditarifky,406,411,428,371,397,356,422,0,450,483,399,0,346,0,1,Tidak Lulus,9,,

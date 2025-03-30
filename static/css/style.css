@@ -195,3 +195,13 @@ form {
     stroke: #000;
     stroke-width: 1.5;
 }
+/* style.css */
+#aiRecommendBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spinner-border {
+    vertical-align: middle;
+    margin-left: 8px;
+}

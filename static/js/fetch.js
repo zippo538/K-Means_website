@@ -1,7 +1,7 @@
-import {createBarChart,createPieChart,createBoxPlot,createElbowMethodChart, createScatterPlot,createSilhouettePlot} from "./chart-d3.js";
+import {createBarChart,createPieChart,createBoxPlot,createElbowMethodChart, createScatterPlot,createSilhouettePlot,createTopScoreBarChart} from "./chart-d3.js";
     //DOM Elements 
     const ctx_data_missing_or_null = 'data_missing_or_null';
-    const ctx_sum_status_siswa = 'sum_status_siswa';
+    const ctx_top_zero_student = 'top_zero_student';
     const ctx_boxplot = 'boxplot';
     const ctx_elbow_method = 'elbow_method';
     const ctx_kmeans_cluster = 'kMeansCluster';
@@ -20,11 +20,12 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(data => {
                 // Bar chart missing value
                 const missing_value = data.missing_value;
-                createBarChart(ctx_data_missing_or_null, missing_value);
+                createBarChart(ctx_data_missing_or_null, missing_value,);
 
                 // Pie chart sum_status_siswa
-                const sum_status = data.sum_status;
-                createPieChart(ctx_sum_status_siswa, sum_status);
+                const top_zero_student = data.top_student_with_zero_;
+                console.log(top_zero_student)
+                createTopScoreBarChart(ctx_top_zero_student, top_zero_student);
 
                 // Boxplot
                 fetch("/api/data/boxplot")

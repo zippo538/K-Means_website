@@ -4,3 +4,4 @@ session_flask
 .env
 node_modules/
 __pycache__/
+rekomendasi_guru.md

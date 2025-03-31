@@ -1,6 +1,6 @@
 import {colors} from './colors-chart.js';
 
-function createBarChart(containerId, data, width = 600, height = 400) {
+function createBarChart(containerId, data, width = 600, height = 450) {
     const margin = { top: 20, right: 30, bottom: 40, left: 40 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -634,5 +634,95 @@ function createSilhouettePlot(containerId, silhouetteScores, clusterLabels, widt
         .text("Silhouette Plot");
 }
 
+// horizontal bar chart
+function createTopScoreBarChart(containerId, data, width = 800, height = 500) {
+    // Set margin
+    const margin = {top: 40, right: 150, bottom: 60, left: 100};
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
 
-export { createBarChart, createPieChart, createBoxPlot, createElbowMethodChart, createScatterPlot,createSilhouettePlot};
+    const values = data.values ;
+
+    
+     // 2. Ubah array numbers menjadi array objects 
+    // (karena bar chart biasanya butuh label + value)
+    const chartData = values.map((values, index) => ({
+        labels: data.labels[index+1],
+        values: values
+    }));
+    
+    // 3. Urutkan
+    const sortedData = [...chartData].sort((a, b) => b.score - a.score);
+
+    // Create SVG
+    const svg = d3.select(`#${containerId}`)
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Create scales
+    const x = d3.scaleLinear()
+        .domain([0, d3.max(sortedData, d => d.values )]) // Handle jika score tidak ada
+        .range([0, innerWidth]);
+
+    const y = d3.scaleBand()
+        .domain(sortedData.map(d => d.labels )) // Handle jika name tidak ada
+        .range([0, innerHeight])
+        .padding(0.2);
+
+    // Add bars
+    svg.selectAll(".bar")
+        .data(sortedData)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", 0)
+        .attr("y", (d) => y(d.labels))
+        .attr("width", (d) => x(d.values))
+        .attr("height", y.bandwidth())
+        .attr("fill", (d, i) => colors[i % 3])
+        
+
+    // Add X axis
+    svg.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x))
+        .append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", 35)
+        .attr("text-anchor", "middle")
+        .text("Skor Try Out");
+
+    // Add Y axis
+    svg.append("g")
+        .call(d3.axisLeft(y))
+        .selectAll("text")
+        .attr("dx", "-0.5em")
+        .attr("dy", "0.15em")
+        .style("text-anchor", "end");
+
+    // Add title
+    svg.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "20px")
+        .text("Top nilai nol terbanyak");
+    
+    svg.selectAll(".bar-label")
+        .data(sortedData)
+        .enter()
+        .append("text")
+        .attr("class", "bar-label")
+        .attr("x", (d) => x(d.values) + 5) // Posisi horizontal di tengah bar
+        .attr("y", (d) => y(d.labels) + y.bandwidth() / 2) // Posisi vertikal di tengah bar
+        .attr("dy", "0.35em") // Penyesuaian vertikal
+        .attr("text-anchor", "start") // Teks di tengah
+        .text((d) => d.values); // Menampilkan nilai
+
+  
+}
+
+export { createBarChart, createPieChart, createBoxPlot, createElbowMethodChart, createScatterPlot,createSilhouettePlot,createTopScoreBarChart};

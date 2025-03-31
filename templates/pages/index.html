@@ -8,22 +8,35 @@
 {% block content %}
 <!-- Main Content -->
             <!-- Content -->
-             <div class="row ">
-                 <div class="col-sm float-start">
-                     <h2 >Upload Data CSV</h2>
+            <div class="row ">
+                <div class="col-sm-6 float-start">
+                    <h2 >Upload Data CSV</h2>
                      <!-- Form Upload CSV -->
-                     <form action="/upload" method="POST" enctype="multipart/form-data">
-                         <div class="mb-3">
-                             <label for="csvFile" class="form-label">Pilih file CSV</label>
-                             <input type="file" class="form-control" id="csvFile" name="csvFile" accept=".csv" required>
-                         </div>
+                     <form action="{{url_for('reset_all')}}" method="POST">
+                        <div class="row mb-3">
+                             <label for="csvFile" class="form-label col-md-6">Pilih file CSV</label>
+                            <div class="col-auto ">
+                                 <a href="{{ url_for('download_template') }}" class="btn btn-success">
+                                        <i class="bi bi-arrow-down"></i> 
+                                        <span id="downloadTemplateExcel">Download Template</span>
+                                    </a>
+                                </div>
+                                    <div class="col-auto ">
+                                        <button href="{{ url_for('download_template') }}" class="btn btn-danger" onclick="return confirm('Yakin Ingin Menghapus Semua DATA?')">
+                                            <i class="bi bi-arrow-repeat"></i> 
+                                            <span id="downloadExcel">Reset</span>
+                                        </button>
+                                    </div>
+                                </form>
+                        </div>
+                        <form action="/upload" method="POST" enctype="multipart/form-data">
+                            <input type="file" class="form-control mb-3" id="csvFile" name="csvFile" accept=".csv" required>
                          <button type="submit" class="btn btn-primary bg-gray-100">
                             <i class="bi bi-upload"></i> Upload</button>
-                     </form>
+                        </form>
                 </div>
-                
                 {%if data%}
-                <div class="col-sm box_information">
+                <div class="col-sm-6 box_information">
                     <p>Information</p>
                         <p>Attributes : {{data.attributes}}</p>
                         <p>Rows : {{data.rows}}</p>
@@ -71,11 +84,11 @@
                                             {% endfor %}
                                         </tr>
                                         {% endfor %}
-                                    {%else%}
+                                    {% else %}
                                         <tr>
                                             <td colspan="4" class="text-center">Tidak ada data</td>
                                         </tr>
-                                    {%endif%}
+                                    {% endif %}
                                 </tbody>
                             </table>  
                         </div>

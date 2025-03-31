@@ -68,3 +68,12 @@ class RedisService:
         except Exception as e:
             print(f"Error checking Redis key: {e}")
             return False
+    @staticmethod
+    def clearDB():
+        """Menghapus semua data di Redis"""
+        try:
+            redis_connection.flushall()
+            return True
+        except Exception as e:
+            print(f"Error clearing Redis DB: {e}")
+            return False

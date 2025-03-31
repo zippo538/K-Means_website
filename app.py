@@ -1,5 +1,5 @@
 from io import BytesIO
-from flask import render_template, request, redirect, send_file, url_for, session, jsonify
+from flask import render_template, request, redirect, send_file, url_for, session, jsonify, send_from_directory, flash
 from dotenv import load_dotenv
 from controller.renderer import MarkdownRenderer
 import os
@@ -83,11 +83,11 @@ def upload_file():
                     'mins' : mins,
                     'means' : means,
                     'missing_data' : missing_data,
-                    'zip_select_col' : None
+                    'zip_select_col' : None,
+                    'path' : filepath,
                 }
             RedisService.set_data(key='data_key',data=data)
-            
-            serialized_df = RedisService.set_data(data=df, key='df_key')            
+            RedisService.set_data(data=df, key='df_key')            
             return redirect(url_for('index'))
         else:
             return "File harus berupa CSV", 400
@@ -95,6 +95,7 @@ def upload_file():
         app.logger.error(f'Error occurred: {e} - Path: {request.path}')
         return "An error occurred", 500
 
+###page
 
 @app.route('/data',methods=['GET'])
 def get_data():
@@ -171,6 +172,77 @@ def update_result(data_key) :
     }
     return RedisService.set_data(key='data_key',data=data_key)
 
+
+## render markdown
+@app.route('/rekomendasi',methods=['GET'])
+def rekomendasi() : 
+    md_renderer = MarkdownRenderer()
+    if session.get('ai_called') : 
+        return md_renderer.render_file('rekomendasi_guru.md')
+    
+    session['ai_called'] = True
+    return md_renderer.render_file('rekomendasi_guru.md')
+@app.route('/rekomendasi/get_data', methods=['POST'])
+def get_data_rekomendasi() -> str :
+    #jika tidak ada session
+    if 'ai_called' not in session:
+        session['ai_called'] = False
+        try:
+            api_groq = ApiGroq(api_key=str(groq_api_key))
+            recommendation = api_groq.recomendation(
+                key_redis='data_key',
+                key_data='result_kmeans'
+            )
+            print("hello world")
+            print(recommendation)
+            
+            session['ai_called'] = True
+            return jsonify({
+                "success": True,
+                "message" : recommendation,
+                "redirect_url": url_for('rekomendasi')
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 500
+                
+    if session['ai_called'] : 
+        return jsonify({
+            "redirect": True,
+            "redirect_url": url_for('rekomendasi')
+        })
+
+##Reset DB
+@app.route('/reset-all', methods=['POST'])
+def reset_all():
+    try:
+        # 1. Hapus semua data Redis
+        path = RedisService.get_data(key='data_key')['path']
+        RedisService.clearDB();
+        # 2. Hapus file tertentu
+        files_to_delete = [
+            path,
+            'rekomendasi_guru.md',
+        ]
+        
+        for file_path in files_to_delete:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        # 3. Hapus session
+        session.clear()
+        
+        flash('Reset berhasil! Semua data dan file telah dihapus.', 'success')
+    except Exception as e:
+        app.logger.error(f'Error saat reset: {str(e)}')
+        flash('Gagal melakukan reset', 'danger')
+    return redirect(url_for('index')) 
+
+
+###Download
+
 @app.route('/download/excel')
 def download_excel():
     # Ambil data dari Redis
@@ -233,7 +305,21 @@ def download_pdf():
     else:
         return "No clustering data available", 404
       
+
+@app.route('/download/download-template')
+def download_template():
+    # Pastikan file template ada di folder 'static/templates'
+    template_path = os.path.join(app.root_path, 'static', 'templates', 'file.csv')
     
+    if not os.path.exists(template_path):
+        return "Template tidak ditemukan", 404
+    
+    return send_from_directory(
+        directory=os.path.join(app.root_path, 'static', 'templates'),
+        path='file.csv',
+        as_attachment=True,
+        download_name='file.csv'
+    )
 
 #select columns 
 @app.route('/select/column',methods = ['POST','GET'])
@@ -416,75 +502,9 @@ def kmenas_clustering(k : int) -> str:
         return data_key     
     
 
-## render markdown
-@app.route('/rekomendasi',methods=['GET'])
-def rekomendasi() : 
-    md_renderer = MarkdownRenderer()
-    if session.get('ai_called') : 
-        return md_renderer.render_file('rekomendasi_guru.md')
-    
-    session['ai_called'] = True
-    return md_renderer.render_file('rekomendasi_guru.md')
-@app.route('/rekomendasi/get_data', methods=['POST'])
-def get_data_rekomendasi() -> str :
-    #jika tidak ada session
-    if 'ai_called' not in session:
-        session['ai_called'] = False
-        try:
-            api_groq = ApiGroq(api_key=str(groq_api_key))
-            recommendation = api_groq.recomendation(
-                key_redis='data_key',
-                key_data='result_kmeans'
-            )
-            print("hello world")
-            print(recommendation)
-            
-            session['ai_called'] = True
-            return jsonify({
-                "success": True,
-                "message" : recommendation,
-                "redirect_url": url_for('rekomendasi')
-            })
-        except Exception as e:
-            return jsonify({
-                "success": False,
-                "message": str(e)
-            }), 500
-                
-    if session['ai_called'] : 
-        return jsonify({
-            "redirect": True,
-            "redirect_url": url_for('rekomendasi')
-        })
-    # Proses rekomendasi AI
 
-def can_call_ai():
-    """
-    Cek apakah user boleh memanggil AI
-    Return: Tuple (bool, str) 
-    - True jika boleh, False jika sudah digunakan
-    - Pesan status
-    """
-    if 'ai_called' not in session:
-        session['ai_called'] = False
-        return True, "AI call available"
-    elif session['ai_called'] == False:
-        return True, "AI call available"
-    else:
-        return False, "AI already used this session"    
-    
-@app.route('/rekomendasi/reset', methods=['POST'])
-def reset_ai_call():
-    """Reset status panggilan (untuk testing/demo)"""
-    session['ai_called'] = False
-    return jsonify({"success": True, "message": "AI call counter reset"})
 
-@app.route('/rekomendasi/check-ai-call')
-def check_ai_call():
-    return jsonify({
-        'ai_called': session.get('ai_called', False)
-    })
-    
+
 
 ##api
 

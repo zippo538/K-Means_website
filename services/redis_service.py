@@ -2,7 +2,11 @@ from config.redis_config import redis_connection
 import pandas as pd
 import json
 from io import StringIO
-
+"""
+File ini berguna untuk mengelola koneksi Redis
+dan menyediakan fungsi untuk menyimpan, mengambil,
+menghapus, dan memeriksa data di Redis.
+"""
 class RedisService:
     @staticmethod
     def set_data(key: str, data, expire: int = None) -> bool:

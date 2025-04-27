@@ -35,13 +35,7 @@
                             <i class="bi bi-upload"></i> Upload</button>
                         </form>
                 </div>
-                {%if data%}
-                <div class="col-sm-6 box_information">
-                    <p>Information</p>
-                        <p>Attributes : {{data.attributes}}</p>
-                        <p>Rows : {{data.rows}}</p>
-                    </div>
-                {% endif %}
+            
                 </div>
             </div>
             <div class="row position-relative">
@@ -52,7 +46,7 @@
                         <div id="top_zero_student" class=''></div>
                 </div>
             </div>
-            <div class="col-md-6 ">
+            <div class="col-md">
                 <div class="position-relative end-0 bottom-0" style="width: 80%; margin: auto;">
                     <div id="boxplot" class="card_box_boxplot"></div>
                 </div>
@@ -69,7 +63,7 @@
                                     <tr>
                                         <tr>
                                             {% if data  %}
-                                            {% for head in data.header %}
+                                            {% for head in data.headers %}
                                             <th class="text-center" scope="col">{{head}}</th>
                                             {% endfor %}
                                             {% endif %}                                            
@@ -112,13 +106,12 @@
                                                     <th>Maximum</th>
                                                     <th>Mean</th>
                                                 {% endif %}
-                                                <th>Missing Data</th>
                                                 <th>Type</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% if data.zipped_data %}
-                                                {% for header,type,maxs,mins,means,missing_data in data.zipped_data  %}
+                                                {% for header,type,maxs,mins,means in data.zipped_data  %}
                                                 <tr>
                                                     <td>{{loop.index}}</td>
                                                     <td>{{header}}</td>
@@ -131,7 +124,6 @@
                                                         <td> - </td>
                                                         <td> - </td>
                                                     {% endif %}
-                                                    <td>{{missing_data}}</td>
                                                     <td>{{type}}</td>
                                                 </tr>
                                                 {% endfor %}

@@ -167,6 +167,18 @@ function createBoxPlot(containerId, data, width = 1600, height = 600) {
             .append("g")
             .attr("transform", (d) => `translate(${x(d.index)},0)`);
 
+        const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("background", "white")
+            .style("border", "1px solid #ccc")
+            .style("padding", "10px")
+            .style("border-radius", "5px")
+            .style("pointer-events", "none"); 
+        
+
             // Gambar kotak (box)
         boxes.append("rect")
             .attr("class", "box")
@@ -178,7 +190,8 @@ function createBoxPlot(containerId, data, width = 1600, height = 600) {
             .attr("opacity", 0) // Mulai dengan opacity 0 untuk animasi
             .transition() // Animasi
             .duration(1000)
-            .attr("opacity", 0.7);
+            .attr("opacity", 0.7)
+            
 
             // Gambar garis median
         boxes.append("line")
@@ -647,7 +660,7 @@ function createTopScoreBarChart(containerId, data, width = 800, height = 500) {
      // 2. Ubah array numbers menjadi array objects 
     // (karena bar chart biasanya butuh label + value)
     const chartData = values.map((values, index) => ({
-        labels: data.labels[index+1],
+        labels: data.labels[index],
         values: values
     }));
     
@@ -670,7 +683,7 @@ function createTopScoreBarChart(containerId, data, width = 800, height = 500) {
     const y = d3.scaleBand()
         .domain(sortedData.map(d => d.labels )) // Handle jika name tidak ada
         .range([0, innerHeight])
-        .padding(0.2);
+        .padding(0.3);
 
     // Add bars
     svg.selectAll(".bar")
@@ -693,7 +706,9 @@ function createTopScoreBarChart(containerId, data, width = 800, height = 500) {
         .attr("x", innerWidth / 2)
         .attr("y", 35)
         .attr("text-anchor", "middle")
-        .text("Skor Try Out");
+        .text("Skor Try Out")
+        .style("font-size", "15px")
+        ;
 
     // Add Y axis
     svg.append("g")
@@ -701,7 +716,9 @@ function createTopScoreBarChart(containerId, data, width = 800, height = 500) {
         .selectAll("text")
         .attr("dx", "-0.5em")
         .attr("dy", "0.15em")
-        .style("text-anchor", "end");
+        .style("text-anchor", "end")
+        .style("font-size", "15px") // Ukuran font
+        ;
 
     // Add title
     svg.append("text")

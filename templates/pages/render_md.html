@@ -4,10 +4,12 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
     {% endblock %}
     {% block content %}
-    <div class="card">
-            <div class="card-body markdown-content">
+    <div class="markdown container">
+        <main class="content">
+            <article class="markdown-content">
                 {{ content|safe }}
-            </div>
+            </article>
+        </main>
     </div>
     {% endblock %}
     

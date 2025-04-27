@@ -20,6 +20,8 @@ from controller.api_groq import ApiGroq
 load_dotenv()
 app = create_app()
 groq_api_key = os.getenv('GROQ_KEY')
+md_renderer = MarkdownRenderer()
+
 ## route
 
 @app.route('/')
@@ -46,33 +48,35 @@ def upload_file():
             df= pd.read_csv(filepath)
             name = file.filename
                         
+            # Ambil header nilai try
+            data_value = df.iloc[:, 4:]          
             
             rows = len(df.index)
-            header = df.axes[1].values.tolist()
-            attributes = len(header)
+            header_nilai_tryout = data_value.columns.tolist()
+            headers = df.axes[1].tolist()
+            
+            attributes = len(data_value)
             types = []
             maxs = []
             mins = []
             means = []
-            missing_data = []
                 
-            for i in range (len(header)):
-                    types.append(str(df[header[i]].dtypes.name))
-                    missing_data.append(int(df[header[i]].isnull().sum()))
-                    if df[header[i]].dtypes != object:
-                        maxs.append(float(df[header[i]].max()))
-                        mins.append(float(df[header[i]].min()))
-                        means.append(float(df[header[i]].mean()))
+            for i in range (len(header_nilai_tryout)):
+                    types.append(str(df[header_nilai_tryout[i]].dtypes.name))
+                    if df[header_nilai_tryout[i]].dtypes != object:
+                        maxs.append(float(df[header_nilai_tryout[i]].max()))
+                        mins.append(float(df[header_nilai_tryout[i]].min()))
+                        means.append(float(df[header_nilai_tryout[i]].mean()))
                     else : 
                         maxs.append(0)
                         mins.append(0)
                         means.append(0)
                     
-            zipped_data = list(zip(header,types,maxs,mins,means,missing_data))
+            zipped_data = list(zip(header_nilai_tryout,types,maxs,mins,means))
             datas = df.values.tolist()
             data = {
-                    'header' : header,
-                    'headers' : json.dumps(header),
+                    'header' : header_nilai_tryout,
+                    'headers' : headers,
                     'name' : name,
                     'attributes' : attributes,
                     'rows' : rows,
@@ -82,7 +86,6 @@ def upload_file():
                     'maxs' : maxs,
                     'mins' : mins,
                     'means' : means,
-                    'missing_data' : missing_data,
                     'zip_select_col' : None,
                     'path' : filepath,
                 }
@@ -134,6 +137,7 @@ def get_result():
         # Jumlah data per halaman
         per_page = 10
         
+        
         # Ambil data clustering dari Redis
         if 'result_kmeans' in get_data_key:
             clustering_data = get_data_key['result_kmeans']
@@ -173,10 +177,10 @@ def update_result(data_key) :
     return RedisService.set_data(key='data_key',data=data_key)
 
 
-## render markdown
+## render markdown 
+### rekomendasi
 @app.route('/rekomendasi',methods=['GET'])
 def rekomendasi() : 
-    md_renderer = MarkdownRenderer()
     if session.get('ai_called') : 
         return md_renderer.render_file('rekomendasi_guru.md')
     
@@ -213,6 +217,17 @@ def get_data_rekomendasi() -> str :
             "redirect": True,
             "redirect_url": url_for('rekomendasi')
         })
+### help
+@app.route('/<path:name>',methods=['GET'])
+def help_page(name) :
+    md_path = os.path.join(app.root_path, 'static', 'content',f'{name}.md')
+    
+    if not os.path.exists(md_path):
+        return "File not found", 404
+    
+    content = md_renderer.render_file(md_path)
+        
+    return content
 
 ##Reset DB
 @app.route('/reset-all', methods=['POST'])
@@ -465,13 +480,12 @@ def kmenas_clustering(k : int) -> str:
         data_key = RedisService.get_data(key='data_key')
         name_data = data_key['df']
         # Mengurangi dimensi data menggunakan PCA 
-        pca = PCA(n_components=2)
-        reduced_data = pca.fit_transform(normalized_key['data'])
+        data = normalized_key['data']
         # Mengunakan K-Means pada data yang telah direduksi
         kmeans = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
-        kmeans.fit(reduced_data)
+        kmeans.fit(data)
         
-        data_to_json = reduced_data.tolist()
+        
         # Mengambil nama siswa    
         name = []
         for i in range(len(name_data)):
@@ -481,8 +495,8 @@ def kmenas_clustering(k : int) -> str:
         cluster = kmeans.labels_.tolist()
         cluster_centers = kmeans.cluster_centers_.tolist()
     
-        silhouette_score_val = silhouette_score(reduced_data, kmeans.labels_)
-        sample_silhouette_values = silhouette_samples(reduced_data, kmeans.labels_)
+        silhouette_score_val = silhouette_score(data, kmeans.labels_)
+        sample_silhouette_values = silhouette_samples(data, kmeans.labels_)
         silhouette_per_cluster = []
         for i in range(k):
             ith_cluster_silhouette_values = \
@@ -491,7 +505,7 @@ def kmenas_clustering(k : int) -> str:
             silhouette_per_cluster.append(ith_cluster_silhouette_values.tolist())
     
         data_key =  {
-            'data' : data_to_json,
+            'data' : data,
             'cluster' : cluster,
             'cluster_centers' : cluster_centers,
             'name' : name,
@@ -500,11 +514,7 @@ def kmenas_clustering(k : int) -> str:
             
             }
         return data_key     
-    
-
-
-
-
+   
 
 ##api
 
@@ -520,15 +530,7 @@ def get_null_or_missing_value ()->str :
     zero_counts_json = {'labels' : zero_count.index.tolist(), 'values' : zero_count.tolist()}
     return zero_counts_json
 
-def sum_status()->str:
-    # Example implementation
-    df = RedisService.get_data('df_key',as_dataframe=True)
-    sum_status= df['Status'].value_counts().tolist()
-    data_sum_status = {
-        'labels' : df['Status'].unique().tolist(),
-        'values' : sum_status
-    }
-    return data_sum_status
+
     
 def top_students_with_zero() ->str :
     df = RedisService.get_data(key='df_key',as_dataframe=True)
@@ -560,7 +562,6 @@ def get_data_from_dataframe() -> str:
 def api() -> str:    
     data = {
             'missing_value': get_null_or_missing_value(),
-            'sum_status': sum_status(),
             'top_student_with_zero_': top_students_with_zero(),
             }
     return data
@@ -568,10 +569,7 @@ def api() -> str:
 @app.route('/api/data/boxplot')
 def api_dataframe() -> str: 
     df = RedisService.get_data(key='df_key',as_dataframe=True)
-    data = df.iloc[:, 4:]
-    delete_col = ['Status','Gel','Jumlah absen TWK','Jumlah absen TIU','Jumlah absen TKP']
-    data = data.drop(delete_col, axis=1)
-    data = data.values.tolist()
+    data = df.iloc[:, 4:].values.tolist()
     header = df.columns[4:].tolist()
     return {'data': data, 'header': header}
 

@@ -35,12 +35,19 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try : 
+        
         if 'csvFile' not in request.files:
             return "Tidak ada file yang diupload", 400
 
         file = request.files['csvFile']
         if file.filename == '':
             return "File tidak dipilih", 400
+        
+        # if os.path.exists(filepath):
+        #     RedisService.clearDB()
+        #     os.remove(filepath)
+        #     session.clear()
+        #     return redirect(url_for('import_file')) 
 
         if file and file.filename.endswith('.csv'):
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
@@ -99,6 +106,12 @@ def upload_file():
         return "An error occurred", 500
 
 ###page
+@app.route('/help',methods=['GET'])
+def help_page():
+    return render_template('pages/help.html',title='Help')
+@app.route('/import_file',methods=['GET'])
+def import_file():
+    return render_template('pages/import.html',title='Import File')
 
 @app.route('/data',methods=['GET'])
 def get_data():
@@ -219,7 +232,7 @@ def get_data_rekomendasi() -> str :
         })
 ### help
 @app.route('/<path:name>',methods=['GET'])
-def help_page(name) :
+def help_page_md(name) :
     md_path = os.path.join(app.root_path, 'static', 'content',f'{name}.md')
     
     if not os.path.exists(md_path):
@@ -253,7 +266,7 @@ def reset_all():
     except Exception as e:
         app.logger.error(f'Error saat reset: {str(e)}')
         flash('Gagal melakukan reset', 'danger')
-    return redirect(url_for('index')) 
+    return redirect(url_for('import_file')) 
 
 
 ###Download

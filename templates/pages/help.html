@@ -1,0 +1,163 @@
+{% extends 'base.html'%}
+{% block styles %}
+<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">
+{% endblock %}
+{% block content%}
+<div class="help_page">
+    <div class="tutorial-container">
+        <div class="title_page_help">
+            <h1>Petunjuk Penggunaan Aplikasi Data Mining Pengelompokkan Nilai Try Out</h1>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">1</span>
+            <div class="step-content">
+                <div class="download_template_file_csv">
+                    <p>Pastikan memiliki file csv atau bisa <a href="{{url_for('download_template')}}" target="_blank">download disini</a></p>
+                    <img src="/static/content/img/1.png" alt="Langkah 1 - Download Template">
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">2</span>
+            <div class="step-content">
+                <p>Selanjutnya, import file tersebut kedalam sistem</p>
+                <img src="/static/content/img/2.png" alt="Langkah 2 - Import File">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">3</span>
+            <div class="step-content">
+                <p>Lihat bar chart disini yaitu menunjukkan nilai 0 setiap fitur di nilai try out. Carilah fitur yang memiliki nilai 0 paling sedikit. Contohnya, diambil pada fitur nilai try out ke-7 sampai dengan 11</p>
+                <img src="/static/content/img/3.png" alt="Langkah 3 - Bar Chart">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">4</span>
+            <div class="step-content">
+                <p>Lalu pilih select kolom yang sudah ditentukan</p>
+                <img src="/static/content/img/4.png" alt="Langkah 4 - Pilih Kolom">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">5</span>
+            <div class="step-content">
+                <p>Setelah itu klik Select Columns</p>
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">6</span>
+            <div class="step-content">
+                <p>Pindah halaman normalization</p>
+                <img src="/static/content/img/5.png" alt="Langkah 6 - Halaman Normalization">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">7</span>
+            <div class="step-content">
+                <p>Muncul tabel berisi hasil nilai yang telah di seleksi</p>
+                <img src="/static/content/img/6.png" alt="Langkah 7 - Tabel Hasil Seleksi">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">8</span>
+            <div class="step-content">
+                <div class="note">
+                    <strong>Penting:</strong> Pertama pilih <strong>replace with mean</strong> agar tidak terjadi error
+                </div>
+                <img src="/static/content/img/7.png" alt="Langkah 8 - Replace with Mean">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">9</span>
+            <div class="step-content">
+                <p>Selanjutnya, pilih <strong>MinMax Scaller</strong> untuk mengubah data nilai menjadi rentang 0-1</p>
+                <img src="/static/content/img/8.png" alt="Langkah 9 - MinMax Scaller">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">10</span>
+            <div class="step-content">
+                <p>Muncul line <em>elbow method</em> yang berguna untuk menentukan nilai cluster terbaik. Cara melihatnya dengan penurunan point diawal yang landai.</p>
+                <img src="/static/content/img/9.png" alt="Langkah 10 - Elbow Method">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">11</span>
+            <div class="step-content">
+                <p>Masukkan nilai k pada kolom ini</p>
+                <img src="/static/content/img/10.png" alt="Langkah 11 - Input Nilai K">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">12</span>
+            <div class="step-content">
+                <p>Pindah ke halaman results</p>
+                <img src="/static/content/img/11.png" alt="Langkah 12 - Halaman Results">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">13</span>
+            <div class="step-content">
+                <p>Muncul diagram <em>scatter plot</em> yang berisi hasil clustering K-Means</p>
+                <img src="/static/content/img/12.png" alt="Langkah 13 - Scatter Plot">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">14</span>
+            <div class="step-content">
+                <p>Disamping kanan, terdapat hasil silhouette coefficient untuk mengetahui kemiripan data antara satu dengan yang lainnya dalam satu cluster yang sama</p>
+                <img src="/static/content/img/13.png" alt="Langkah 14 - Silhouette Coefficient">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">15</span>
+            <div class="step-content">
+                <p>Di halaman bawah, terdapat tabel hasil clustering</p>
+                <img src="/static/content/img/14.png" alt="Langkah 15 - Tabel Hasil Clustering">
+            </div>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">16</span>
+            <div class="step-content">
+                <p>Terdapat 3 tombol yang memiliki fungsi masing-masing yaitu:</p>
+                <img src="/static/content/img/15.png" alt="Langkah 16 - Tombol Aksi">
+                
+                <div class="ai-recommendation">
+                    <h3>Rekomendasi AI</h3>
+                    <img src="/static/content/img/16.png" alt="Tombol Rekomendasi AI">
+                    <p>Tombol ini berfungsi memberikan rekomendasi AI untuk menganalisa hasil clustering</p>
+                </div>
+                
+                <div class="button-group">
+                    <div>
+                        <h3>Download Excel</h3>
+                        <img src="/static/content/img/17.png" alt="Tombol Download Excel">
+                        <p>Tombol ini berguna mendownload hasil clustering berupa file excel</p>
+                    </div>
+                    
+                    <div>
+                        <h3>Download PDF</h3>
+                        <img src="/static/content/img/18.png" alt="Tombol Download PDF">
+                        <p>Tombol ini berguna untuk mendownload file hasil clustering berupa PDF</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

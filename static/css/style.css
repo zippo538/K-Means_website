@@ -282,7 +282,10 @@ tr:nth-child(odd) {
 }
 
 h2 {
-  color: #333;
+  color: var(--primary);
+  margin-bottom: 10px;
+  font-size: 1.8rem;
+  font-weight: bold;
   text-align: center;
 }
 

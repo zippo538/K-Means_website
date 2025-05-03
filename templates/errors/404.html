@@ -1,0 +1,24 @@
+{% extends "base.html" %} {% block styles %}
+<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}" />
+{% endblock %} {% block content %}
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-8 offset-md-2 text-center">
+      <h1 class="display-1 text-primary">404</h1>
+      <h2 class="mb-4">Halaman Tidak Ditemukan</h2>
+      <p class="lead">Maaf, dokumen yang Anda cari tidak dapat ditemukan.</p>
+      <div class="mt-5">
+        <p>Mungkin karena:</p>
+        <ul class="list-unstyled">
+          <li>File telah dipindahkan atau dihapus</li>
+          <li>Ada kesalahan pada URL</li>
+          <li>Dokumen belum tersedia</li>
+        </ul>
+      </div>
+      <a href="{{ url_for('index') }}" class="btn btn-primary mt-4">
+        <i class="fas fa-home"></i> Kembali ke Beranda
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

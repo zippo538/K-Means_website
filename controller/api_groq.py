@@ -21,15 +21,17 @@ class ApiGroq :
         df = pd.DataFrame(data=clustering_data['data'],columns=clustering_data['header'])
 
         data = df.iloc[:,4:]
-        delete_columns = ['Status','Gel','Jumlah absen TWK','Jumlah absen TIU','Jumlah absen TKP','cluster']
-        data = data.drop(delete_columns, axis=1)
+        data = data.drop('cluster', axis=1)
         value = data.columns.values.tolist()
 
         cluster_stats = df.groupby('cluster').agg({
             'id user': 'count',
             value[-1]: 'mean'
         }).to_string()
-
+        clustered_df = df.groupby('cluster').agg({'Nama panggilan': list})
+        group_names = {}
+        for cluster, names in clustered_df['Nama panggilan'].items():
+            group_names[cluster] = names
         llm = ChatGroq(
             model=self.model_name,
             api_key=self.api_key,
@@ -38,12 +40,14 @@ class ApiGroq :
 
         system_prompt = f"""Buat laporan untuk guru dengan format markdown yang mencakup:
             1. Tabel perbandingan antar cluster
-            2. Karakteristik unik tiap cluster
-            3. Rekomendasi strategi mengajar
-            4. Action plan spesifik
+            2. Siapa saja yang ada di cluster tersebut. Buatkan dalam format tabel
+            3. Karakteristik unik tiap cluster
+            4. Rekomendasi strategi mengajar
+            5. Action plan spesifik
+            6. Rekomendasi untuk guru
             
             Gunakan data berikut:
-            {cluster_stats}
+            {cluster_stats,group_names}
             """
       
 

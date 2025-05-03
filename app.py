@@ -1,5 +1,5 @@
 from io import BytesIO
-from flask import render_template, request, redirect, send_file, url_for, session, jsonify, send_from_directory, flash 
+from flask import render_template, request, redirect, send_file, url_for, session, jsonify, send_from_directory, flash, render_template_string
 from dotenv import load_dotenv
 from controller.renderer import MarkdownRenderer
 import os
@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 import json
 import math
+import markdown
+import pdfkit
+import tempfile
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
@@ -21,9 +24,21 @@ load_dotenv()
 app = create_app()
 groq_api_key = os.getenv('GROQ_KEY')
 md_renderer = MarkdownRenderer()
+PDFKIT_CONFIG = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+
+##error handling 
+# Halaman 404 Kustom
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('errors/404.html'), 404
+
+# Halaman 500 Kustom
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('errors/500.html'), 500
+
 
 ## route
-
 @app.route('/')
 def index():
     serialize_data = RedisService.get_data(key='data_key')
@@ -234,17 +249,8 @@ def get_data_rekomendasi() -> str :
             "redirect": True,
             "redirect_url": url_for('rekomendasi')
         })
-### help
-@app.route('/<path:name>',methods=['GET'])
-def help_page_md(name) :
-    md_path = os.path.join(app.root_path, 'static', 'content',f'{name}.md')
-    
-    if not os.path.exists(md_path):
-        return "File not found", 404
-    
-    content = md_renderer.render_file(md_path)
-        
-    return content
+
+
 
 ##Reset DB
 @app.route('/reset-all')
@@ -303,39 +309,69 @@ def download_excel():
 @app.route('/download/pdf')
 def download_pdf():
     # Ambil data dari Redis
-    get_data_key = RedisService.get_data(key='data_key')
+    if not session.get('ai_called'):
+        flash('Silahkan pilih rekomendasi AI terlebih dahulu', 'error')
+        return redirect(url_for('result'))
     
-    if 'kmeans' in get_data_key:
-        clustering_data = get_data_key['kmeans']
+    try:
+        #path markdown
+        markdown_path = os.path.join(app.root_path,'rekomendasi_guru.md')
+        base_html_markdown = os.path.join(app.root_path,'templates','pages','download_pdf.html')
         
-        # Buat file PDF
-        pdf_file = BytesIO()
-        pdf = canvas.Canvas(pdf_file, pagesize=letter)
+        # Baca konten markdown
+        with open(markdown_path, 'r', encoding='utf-8') as file:
+            markdown_content = file.read()
+        # baca konten template html
+        with open(base_html_markdown, 'r', encoding='utf-8') as file:
+            template_content = file.read()
+
         
-        # Tambahkan judul
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(100, 750, "Clustering Result")
+        # Konversi markdown ke HTML
+        html_content = markdown.markdown(markdown_content,extensions=['tables', 'fenced_code'])
         
-        # Tambahkan data ke PDF
-        pdf.setFont("Helvetica", 12)
-        y = 700
-        for i, (name, cluster) in enumerate(zip(clustering_data['name'], clustering_data['cluster'])):
-            pdf.drawString(100, y, f"{i+1}. {name} - Cluster {cluster}")
-            y -= 20
-            if y < 50:  # Jika mencapai batas bawah, buat halaman baru
-                pdf.showPage()
-                y = 750
+        #render ke template html
+        full_html = render_template('pages/download_pdf.html', content=html_content)
         
-        pdf.save()
-        pdf_file.seek(0)
+        # Opsi untuk pdfkit
+        options = {
+            'enable-local-file-access': None,
+            'margin-top': '15mm',
+            'margin-right': '15mm',
+            'margin-bottom': '15mm',
+            'margin-left': '15mm',
+            'encoding': "UTF-8",
+            'quiet': '',
+            'no-stop-slow-scripts': '',
+            'javascript-delay': '1000'  # Beri waktu untuk JS dijalankan
+        }
+        
+        # Buat file PDF sementara
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            pdfkit.from_string(
+                full_html, 
+                temp_pdf.name, 
+                configuration=PDFKIT_CONFIG,
+                options=options
+                )
+            temp_pdf_path = temp_pdf.name
+        
+        # Kirim file PDF sebagai response
         return send_file(
-            pdf_file,
-            mimetype='application/pdf',
+            temp_pdf_path,
             as_attachment=True,
-            download_name='clustering_result.pdf'
+            download_name="Rekomendasi Guru.pdf",
+            mimetype='application/pdf'
         )
-    else:
-        return "No clustering data available", 404
+    
+    except Exception as e:
+        flash('Gagal mengunduh PDF', 'error')
+        app.logger.error(f'Error saat mengunduh PDF: {str(e)}')
+        redirect(url_for('result'))
+    
+    finally:
+        # Pastikan file temporary dihapus setelah dikirim
+        if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
       
 
 @app.route('/download/download-template')

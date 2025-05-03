@@ -1,44 +1,32 @@
 :root {
     --primary: #4f46e5;
     --primary-dark: #4338ca;
-    --secondary: #f9fafb;
     --text: #1f2937;
     --text-light: #6b7280;
-    --light-gray: #e5e7eb;
-    --white: #ffffff;
+    --bg: #ffffff;
+    --border: #e5e7eb;
     --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Reset & Base Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-/* Navbar Container */
+/* Navbar Base */
 .navbar {
-    background-color: var(--white);
+    background-color: var(--bg);
     box-shadow: var(--shadow);
     top: 0;
     z-index: 1000;
-    padding: 0.8rem 2rem;
+    padding: 0.8rem 1rem;
 }
 
-/* Navbar Layout */
 .navbar-container {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Logo/Brand */
+/* Brand */
 .navbar-brand {
     display: flex;
     align-items: center;
@@ -51,37 +39,57 @@ body {
 }
 
 .brand-name {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 600;
     color: var(--primary);
 }
 
-/* Menu Items */
+/* Menu Toggle */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 24px;
+    height: 21px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.menu-toggle span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: var(--text);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Nav Menu */
 .navbar-menu {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
 }
 
 .nav-links {
     display: flex;
-    gap: 1.5rem;
     list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-item {
     position: relative;
+    margin-left: 1.5rem;
 }
 
 .nav-link {
-    text-decoration: none;
+    display: flex;
+    align-items: center;
     color: var(--text);
+    text-decoration: none;
     font-weight: 500;
     padding: 0.5rem 0;
     transition: color 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
 }
 
 .nav-link:hover {
@@ -93,134 +101,136 @@ body {
     font-weight: 600;
 }
 
-/* Dropdown Menu */
+.icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+/* Dropdown */
 .dropdown {
     position: relative;
+}
+
+.dropdown-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    transition: transform 0.3s;
 }
 
 .dropdown-content {
     position: absolute;
     top: 100%;
     left: 0;
-    background-color: var(--white);
+    background-color: var(--bg);
     min-width: 200px;
     border-radius: 0.5rem;
     box-shadow: var(--shadow);
+    padding: 0.5rem 0;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s;
-    z-index: 100;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
 }
 
-.dropdown:hover .dropdown-content {
+.dropdown:hover .dropdown-content,
+.dropdown:focus-within .dropdown-content {
     opacity: 1;
     visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown:hover .dropdown-icon {
+    transform: rotate(180deg);
 }
 
 .dropdown-item {
     display: block;
-    padding: 0.8rem 1rem;
+    padding: 0.5rem 1.5rem;
     color: var(--text);
     text-decoration: none;
-    transition: all 0.3s;
+    transition: all 0.2s;
 }
 
 .dropdown-item:hover {
-    background-color: var(--secondary);
+    background-color: rgba(79, 70, 229, 0.1);
     color: var(--primary);
 }
 
-/* CTA Button */
-.btn {
-    padding: 0.6rem 1.2rem;
-    border-radius: 0.5rem;
+.dropdown-item.active {
+    color: var(--primary);
     font-weight: 500;
-    transition: all 0.3s;
-    cursor: pointer;
-    border: none;
-    font-size: 0.95rem;
 }
 
-.btn-primary {
-    background-color: var(--primary);
-    color: var(--white);
-}
-
-.btn-primary:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-/* Mobile Menu Toggle */
-.menu-toggle {
-    display: none;
-    cursor: pointer;
-    font-size: 1.5rem;
-    color: var(--text);
-}
-
-/* Responsive Styles */
+/* Responsive */
 @media (max-width: 768px) {
-    .navbar {
-        padding: 0.8rem 1rem;
+    .menu-toggle {
+        display: flex;
     }
-
+    
     .navbar-menu {
         position: fixed;
-        top: 70px;
-        left: -100%;
+        top: 0;
+        right: -100%;
         width: 80%;
-        height: calc(100vh - 70px);
-        background-color: var(--white);
+        height: 100vh;
+        background-color: var(--bg);
         flex-direction: column;
         align-items: flex-start;
-        padding: 2rem;
-        transition: left 0.3s;
-        box-shadow: var(--shadow);
+        padding: 5rem 2rem;
+        transition: right 0.3s ease;
     }
-
+    
     .navbar-menu.active {
-        left: 0;
+        right: 0;
     }
-
+    
     .nav-links {
         flex-direction: column;
         width: 100%;
-        gap: 1rem;
     }
-
+    
+    .nav-item {
+        margin: 0.5rem 0;
+        width: 100%;
+    }
+    
+    .nav-link {
+        padding: 0.75rem 0;
+    }
+    
     .dropdown-content {
         position: static;
+        width: 100%;
         box-shadow: none;
         opacity: 1;
         visibility: visible;
+        transform: none;
         display: none;
         padding-left: 1rem;
     }
-
-    .dropdown:hover .dropdown-content {
+    
+    .dropdown:hover .dropdown-content,
+    .dropdown:focus-within .dropdown-content {
         display: block;
     }
-
-    .menu-toggle {
-        display: block;
+    
+    .menu-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
     }
-
-    .btn-container {
-        width: 100%;
-        margin-top: 1rem;
+    
+    .menu-toggle.active span:nth-child(2) {
+        opacity: 0;
     }
-}
-
-/* Icons */
-.icon {
-    width: 20px;
-    height: 20px;
-}
-
-/* Animation */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    
+    .menu-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
 }

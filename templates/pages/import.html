@@ -10,7 +10,7 @@
     <p class="subtitle">Unggah file CSV berisi data nilai try out untuk proses clustering</p>
     
     <div class="upload-area" id="uploadArea" >
-        <form action="{{url_for('upload_file')}}" method="POST" enctype="multipart/form-data" id="uploadForm">
+        <form action="{{url_for('import_file')}}" method="POST" enctype="multipart/form-data" id="uploadForm">
             <div class="upload-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -19,24 +19,21 @@
                 </svg>
             </div>
             <div class="upload-text">Drag & drop file CSV Anda disini</div>
-                <input type="file" class="fileInput" id="fileInput" name="csvFile" accept=".csv" required>
+                <input type="file" class="fileInput" id="fileInput" name="file" accept=".csv" required>
                 <div class="upload-hint">Atau <span class="browse-link" id="browseLink">browse</span> file dari komputer Anda</div>
             </div>
-            
-            <div class="file-info" id="fileInfo">
-                <div class="file-name" id="fileName"></div>
-                <div class="file-size" id="fileSize"></div>
-            </div>
-            <div class="btn-container">
-                <button class="btn" id="importBtn" >Import Data</button>
-            </form>
+                <div class="file-info" id="fileInfo">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+                <div class="btn-container">
+                    <button type="submit" class="btn" id="importBtn" >Import Data</button>
+        </form>
                 <button class="btn btn-secondary" id="cancelBtn">Batalkan</button>
             </div>
         
             <a href="{{url_for('download_template')}}" class="template-link">Download template CSV</a>
-        <form action="{{url_for('reset_all')}}" method="POST">
             <a href="{{url_for('reset_all')}}" class="reset-link" onclick="return confirm('Yakin Ingin Menghapus Semua DATA?')">Reset Semua Data</a>
-        </form>
     </div>
 </div>
 </div>
@@ -122,17 +119,13 @@
     
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]);
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]);
     }
     
-    // Import button functionality
-    importBtn.addEventListener('click', () => {
-        alert('File berhasil diunggah!');
-        // Add your import logic here
-    });
+   
     // Cancel button functionality
     cancelBtn.addEventListener('click', function() {
         // Reset form

@@ -1,49 +1,19 @@
 <!DOCTYPE html>
 <html lang="id">
-     <!-- Include bagian head -->
-      <head>
-          {% include 'components/head.html' %}
-      </head>
-      {% block styles %}
-      {% endblock %}
-     <body>
-         <!-- Include navbar -->
-         {% include 'components/navbar.html' %}
-         
-         <!-- Blok konten utama yang akan diisi oleh template turunan -->
-         <main class="container-fluid mt-5 ">
-             {% block content %}{% endblock %}
-         </main>
-      {% block scripts %}
-        <script>
-            // Reset mobile menu state on page load
-            const mobileMenu = document.getElementById('mobile-menu');
-            const navbarMenu = document.getElementById('navbar-menu');
-    
-            mobileMenu.addEventListener('click', () => {
-                navbarMenu.classList.toggle('active');
-                mobileMenu.textContent = navbarMenu.classList.contains('active') ? '✕' : '☰';
-            });
-    
-            // Close menu when clicking on a link (mobile)
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) {
-                        navbarMenu.classList.remove('active');
-                        mobileMenu.textContent = '☰';
-                    }
-                });
-            });
-    
-            // Add active class to current page
-            document.querySelectorAll('.nav-link').forEach(link => {
-                if (link.href === window.location.href) {
-                    link.classList.add('active');
-                }
-            });
-    
-        </script>
-          {% endblock %}
-         
-        </body>
- </html>
+  <!-- Include bagian head -->
+  <head>
+    {% include 'components/head.html' %}
+  </head>
+  {% block styles %} {% endblock %}
+  <body>
+    <!-- Include navbar -->
+    {% include 'components/navbar.html' %}
+    <!-- Include error message -->
+    {% include'components/error_message.html' %}
+    <!-- Blok konten utama yang akan diisi oleh template turunan -->
+    <main class="container-fluid mt-5">{% block content %} {% endblock %}</main>
+    {% block scripts %}
+    <script type="module" src="/static/js/navbar-controller.js"></script>
+    {% endblock %}
+  </body>
+</html>

@@ -19,12 +19,15 @@ from reportlab.pdfgen import canvas
 from app_factory import create_app
 from services.redis_service import RedisService
 from controller.api_groq import ApiGroq
+from controller.pdfConfig import get_pdfkit_config
 
 load_dotenv()
 app = create_app()
 groq_api_key = os.getenv('GROQ_KEY')
 md_renderer = MarkdownRenderer()
-PDFKIT_CONFIG = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+PDFKIT_CONFIG = get_pdfkit_config() # linux
+#windows
+# C:\Program Files\wkhtmltopdf\lib
 
 ##error handling 
 # Halaman 404 Kustom
@@ -36,6 +39,9 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('errors/500.html'), 500
+
+
+# Fungsi untuk menentukan konfigurasi pdfkit berdasarkan sistem operasi
 
 
 ## route
@@ -229,8 +235,6 @@ def get_data_rekomendasi() -> str :
                 key_redis='data_key',
                 key_data='result_kmeans'
             )
-            print("hello world")
-            print(recommendation)
             
             session['ai_called'] = True
             return jsonify({
@@ -250,6 +254,14 @@ def get_data_rekomendasi() -> str :
             "redirect_url": url_for('rekomendasi')
         })
 
+@app.route('/rekomendasi/test_data')
+def test_data() : 
+    df = RedisService.get_data(key='data_key')
+    result_kmeans = df['result_kmeans']
+    df_result_kmeans = pd.DataFrame(data=result_kmeans['data'],columns=result_kmeans['header'])
+    df_columns = df_result_kmeans.columns.to_list()
+    # data = df_result_kmeans.iloc[:,:].to_dict()
+    return df_columns
 
 
 ##Reset DB
@@ -307,25 +319,23 @@ def download_excel():
         return "No clustering data available", 404
 
 @app.route('/download/pdf')
+
+
 def download_pdf():
     # Ambil data dari Redis
     if not session.get('ai_called'):
         flash('Silahkan pilih rekomendasi AI terlebih dahulu', 'error')
-        return redirect(url_for('result'))
+        return redirect(url_for('get_result'))
     
     try:
         #path markdown
         markdown_path = os.path.join(app.root_path,'rekomendasi_guru.md')
-        base_html_markdown = os.path.join(app.root_path,'templates','pages','download_pdf.html')
         
+              
         # Baca konten markdown
         with open(markdown_path, 'r', encoding='utf-8') as file:
             markdown_content = file.read()
-        # baca konten template html
-        with open(base_html_markdown, 'r', encoding='utf-8') as file:
-            template_content = file.read()
-
-        
+   
         # Konversi markdown ke HTML
         html_content = markdown.markdown(markdown_content,extensions=['tables', 'fenced_code'])
         
@@ -366,12 +376,13 @@ def download_pdf():
     except Exception as e:
         flash('Gagal mengunduh PDF', 'error')
         app.logger.error(f'Error saat mengunduh PDF: {str(e)}')
-        redirect(url_for('result'))
+        redirect(url_for('get_result'))
     
-    finally:
-        # Pastikan file temporary dihapus setelah dikirim
-        if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
-            os.remove(temp_pdf_path)
+    # finally:
+    #     # Pastikan file temporary dihapus setelah dikirim
+    #     if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
+    #         #os.remove(temp_pdf_path)
+    #         return None
       
 
 @app.route('/download/download-template')

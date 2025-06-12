@@ -1,39 +1,22 @@
 {% extends "base.html" %}
 
-{%block content%}
+{% block styles %}
+<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">
+{% endblock %}
+
+{% block content %}
 <!-- Main Content -->
             <!-- Content -->
-             <div class="row ">
-                 <div class="col-sm float-start">
-                     <h2 >Upload Data CSV</h2>
-                     <!-- Form Upload CSV -->
-                     <form action="/upload" method="POST" enctype="multipart/form-data">
-                         <div class="mb-3">
-                             <label for="csvFile" class="form-label">Pilih file CSV</label>
-                             <input type="file" class="form-control" id="csvFile" name="csvFile" accept=".csv" required>
-                         </div>
-                         <button type="submit" class="btn btn-primary bg-gray-100">Upload</button>
-                     </form>
-                </div>
-                
-                {%if data%}
-                <div class="col-sm box_information">
-                    <p>Information</p>
-                        <p>Attributes : {{data.attributes}}</p>
-                        <p>Rows : {{data.rows}}</p>
-                    </div>
-                {% endif %}
-                </div>
-            </div>
+            <h1 class="text-center">Dashboard Aplikasi Data Mining </h1>
             <div class="row position-relative">
                 <div class="col-md-6 ">
-                        <div id="data_missing_or_null" class='chart_container card_box '></div>
+                        <div id="data_missing_or_null" class='chart_container card_box'></div>
                 </div>
-                <div class="col-md-6 ">
-                        <div id="sum_status_siswa" class='chart_container card_box '></div>
+                <div class="col-md-6 chart_container card_box ">
+                        <div id="top_zero_student" class=''></div>
                 </div>
             </div>
-            <div class="col-md-6 ">
+            <div class="col-md">
                 <div class="position-relative end-0 bottom-0" style="width: 80%; margin: auto;">
                     <div id="boxplot" class="card_box_boxplot"></div>
                 </div>
@@ -50,7 +33,7 @@
                                     <tr>
                                         <tr>
                                             {% if data  %}
-                                            {% for head in data.header %}
+                                            {% for head in data.headers %}
                                             <th class="text-center" scope="col">{{head}}</th>
                                             {% endfor %}
                                             {% endif %}                                            
@@ -65,11 +48,11 @@
                                             {% endfor %}
                                         </tr>
                                         {% endfor %}
-                                    {%else%}
+                                    {% else %}
                                         <tr>
                                             <td colspan="4" class="text-center">Tidak ada data</td>
                                         </tr>
-                                    {%endif%}
+                                    {% endif %}
                                 </tbody>
                             </table>  
                         </div>
@@ -93,13 +76,12 @@
                                                     <th>Maximum</th>
                                                     <th>Mean</th>
                                                 {% endif %}
-                                                <th>Missing Data</th>
                                                 <th>Type</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% if data.zipped_data %}
-                                                {% for header,type,maxs,mins,means,missing_data in data.zipped_data  %}
+                                                {% for header,type,maxs,mins,means in data.zipped_data  %}
                                                 <tr>
                                                     <td>{{loop.index}}</td>
                                                     <td>{{header}}</td>
@@ -112,7 +94,6 @@
                                                         <td> - </td>
                                                         <td> - </td>
                                                     {% endif %}
-                                                    <td>{{missing_data}}</td>
                                                     <td>{{type}}</td>
                                                 </tr>
                                                 {% endfor %}
@@ -196,7 +177,13 @@
                     </div>
                 </div>
     </form>
-{%endblock%}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script type="module" src="/static/js/fetch.js"></script>
+
+{% endblock %}
 
 
 

@@ -1,0 +1,28 @@
+{% extends "base.html" %} {% block styles %}
+<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}" />
+{% endblock %} {% block content %}
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-8 offset-md-2 text-center">
+      <h1 class="display-1 text-danger">500</h1>
+      <h2 class="mb-4">Kesalahan Server</h2>
+      <p class="lead">
+        Maaf, terjadi kesalahan saat memproses permintaan Anda.
+      </p>
+      <div class="alert alert-warning mt-4">
+        <i class="fas fa-exclamation-triangle"></i>
+        Kami telah mencatat kesalahan ini dan akan segera memperbaikinya.
+      </div>
+      <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+        <i class="fas fa-home"></i> Kembali ke Beranda
+      </a>
+      <a
+        href="mailto:support@example.com"
+        class="btn btn-outline-secondary mt-3 ml-2"
+      >
+        <i class="fas fa-envelope"></i> Hubungi Support
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

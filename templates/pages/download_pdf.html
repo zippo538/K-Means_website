@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF Document</title>
+  </head>
+  <style>
+    :root {
+      --primary-color: #4a6fa5;
+      --title: #4f46e5;
+      --secondary-color: #166088;
+      --dark-color: #1a1a2e;
+      --light-color: #f8f9fa;
+      --highlight-color: #ffd166;
+    }
+
+    .markdown-content {
+      line-height: 1.8;
+      font-size: 1.1rem;
+    }
+    .markdown-container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .content {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    }
+    .markdown-content {
+      line-height: 1.8;
+      font-size: 1.1rem;
+      color: var(--dark-color);
+    }
+    .markdown-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .markdown-content h1,
+    .markdown-content h2,
+    .markdown-content h3 {
+      color: var(--title);
+      padding-bottom: 0.3em;
+      border-bottom: 1px solid #eaecef;
+      margin-top: 1.5em;
+    }
+
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .markdown-content th,
+    .markdown-content td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+
+    .markdown-content th {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .markdown-content pre {
+      padding: 1em;
+      border-radius: 0.5em;
+      background: #f8f9fa;
+      overflow-x: auto;
+    }
+
+    .toc ul {
+      list-style-type: none;
+      padding-left: 1em;
+    }
+    a.headerlink {
+      display: none !important;
+    }
+    table,
+    th,
+    td {
+      border: 1px solid #000000;
+      text-align: left;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+  </style>
+  <body>
+    <div class="container">
+      <main class="content">
+        <article class="markdown-content">{{ content|safe }}</article>
+      </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>
+      hljs.highlightAll();
+    </script>
+  </body>
+</html>

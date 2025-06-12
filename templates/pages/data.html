@@ -1,5 +1,11 @@
 {% extends 'base.html'%}
+{% block styles %}
+<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">
+{% endblock %}
 {%block content%}
+<!-- Flash Message -->
+
+
 <div class="container">
     <div class="row justify-content-center align-items-center">
         <div class="col-md-12 text-center">
@@ -64,12 +70,20 @@
                     <input type="number" class="form-control" id="kValue" name="kValue" min="2" max="10" required>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-dark">Submit</button>
+                    <button for="submitBtn" type="submit" class="btn btn-dark">Submit</button>
                 </div>
-                
             </div>
             </div>
         </form>
     </div>
 </div>
+
+
 {%endblock%}
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% if 'correct_data' in session and 'normalization_data' in session %}
+<script type="module" src="/static/js/fetch.js"></script>
+{% endif %}
+
+{% endblock %}

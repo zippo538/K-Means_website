@@ -1,162 +1,181 @@
 from io import BytesIO
-from flask import Flask, jsonify, render_template, request, redirect, send_file, url_for, session
+from flask import render_template, request, redirect, send_file, url_for, session, jsonify, send_from_directory, flash, render_template_string
 from dotenv import load_dotenv
-import re
+from controller.renderer import MarkdownRenderer
 import os
-import redis
 import pandas as pd
 import numpy as np
 import json
 import math
-from flask_session import Session
+import markdown
+import pdfkit
+import tempfile
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.decomposition import PCA
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from app_factory import create_app
+from services.redis_service import RedisService
+from controller.api_groq import ApiGroq
+from controller.pdfConfig import get_pdfkit_config
+
+
+#detect sepator csv
+def detect_separator(file_path):
+    with open(file_path, 'r', newline='', encoding='utf-8') as file:
+        first_line = file.readline()
+        
+        if ',' in first_line:
+            return pd.read_csv(file_path,sep=',')
+        elif ';' in first_line:
+            return pd.read_csv(file_path,sep=';')
+        else:
+            return "Tidak ditemukan pemisah ',' atau ';'."
 
 load_dotenv()
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.secret_key = os.getenv('SECRET_KEY')
-app.config['SESSION_TYPE'] = 'redis'  
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_REDIS'] = redis.from_url('redis://127.0.0.1:6379')
-# Configure Redis
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=1)
+app = create_app()
+groq_api_key = os.getenv('GROQ_KEY')
+md_renderer = MarkdownRenderer()
+PDFKIT_CONFIG = get_pdfkit_config() # linux
+#windows
+# C:\Program Files\wkhtmltopdf\lib
 
-Session(app)
+##error handling 
+# Halaman 404 Kustom
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('errors/404.html'), 404
 
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+# Halaman 500 Kustom
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('errors/500.html'), 500
+
+
+# Fungsi untuk menentukan konfigurasi pdfkit berdasarkan sistem operasi
 
 
 ## route
-
 @app.route('/')
 def index():
-    serialize_data = redis_client.get('data_key')
-    if serialize_data:
-        data = json.loads(serialize_data)
-        return render_template('index.html', data=data)
+    serialize_data = RedisService.get_data(key='data_key')
+    if not session.get('file_uploaded'):
+        flash('Silahkan upload file terlebih dahulu', 'error')
+        return redirect(url_for('import_file')) 
     else:
-        return render_template('index.html', data=None)
-def serialize_df_to_json(df):
-    return df.to_json(orient='split')
-def retrive_df_from_redis(key : str) -> pd.DataFrame:
-    retrive_data =  redis_client.get(key)
-    json_string = retrive_data.decode('utf-8')
-    df = pd.read_json(json_string,orient='split')
-    return df
-def retrive_data_from_redis(key: str) -> str:
-    retrive_data = redis_client.get(key)
-    if retrive_data:
-        json_data = json.loads(retrive_data.decode('utf-8'))
-        return json_data
-    return {}
-def set_data_to_redis(key: str, data) -> str: 
-    data_json = json.dumps(data)
-    set_data =redis_client.set(key,data_json)
-    return set_data
-
-def remove_html_tags(text) -> str:
-    clean = re.compile('<.*?>')
-    return re.sub(clean, '', text)
-
-def convert_df_to_json_and_remove_html(df) -> str:
-    df_json = df.to_json(orient='split')
-    df_json_no_html = remove_html_tags(df_json)
-    parsed_json = json.loads(df_json_no_html)
-    clean_json = json.dumps(parsed_json, ensure_ascii=False)
-    return clean_json
-
+        return render_template('pages/index.html', data=serialize_data,title='Data Profiling')
      
-
-@app.route('/upload', methods=['POST'])
+@app.route('/upload')
 def upload_file():
     try : 
-        if 'csvFile' not in request.files:
-            return "Tidak ada file yang diupload", 400
-
-        file = request.files['csvFile']
-        if file.filename == '':
-            return "File tidak dipilih", 400
-
-        if file and file.filename.endswith('.csv'):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            rename =  'data.csv'
-            file_path_rename =  os.path.join(app.config['UPLOAD_FOLDER'], rename)
-            file.save(filepath)
-            os.rename(filepath, file_path_rename)
-            df= pd.read_csv(filepath)
-            name = file.filename
-                        
-            
-            rows = len(df.index)
-            header = df.axes[1].values.tolist()
-            attributes = len(header)
-            types = []
-            maxs = []
-            mins = []
-            means = []
-            missing_data = []
-                
-            for i in range (len(header)):
-                    types.append(str(df[header[i]].dtypes.name))
-                    missing_data.append(int(df[header[i]].isnull().sum()))
-                    if df[header[i]].dtypes != object:
-                        maxs.append(float(df[header[i]].max()))
-                        mins.append(float(df[header[i]].min()))
-                        means.append(float(df[header[i]].mean()))
-                    else : 
-                        maxs.append(0)
-                        mins.append(0)
-                        means.append(0)
+        file = RedisService.get_data(key='file_uploaded')['file_name']
+        df= detect_separator(os.path.join(app.config['UPLOAD_FOLDER'], file))
+        name = file
                     
-            zipped_data = list(zip(header,types,maxs,mins,means,missing_data))
-            datas = df.values.tolist()
-            data = {
-                    'header' : header,
-                    'headers' : json.dumps(header),
-                    'name' : name,
-                    'attributes' : attributes,
-                    'rows' : rows,
-                    'zipped_data' : zipped_data,
-                    'df' : datas,
-                    'type' : types,
-                    'maxs' : maxs,
-                    'mins' : mins,
-                    'means' : means,
-                    'missing_data' : missing_data,
-                    'zip_select_col' : None
-                }
-            set_data_to_redis('data_key',data)
+        # Ambil header nilai try
+        data_value = df.iloc[:, 3:]       
+           
+        # ubah data ke int 
+        # Convert the columns to numeric, replacing non-numeric values with NaN
+        select_columns_value = df.columns[3:]
+        df[select_columns_value] = df[select_columns_value].apply(pd.to_numeric, errors='coerce')
+        # Fill NaN values with 0 for these columns. You can use another strategy if necessary.
+        df[select_columns_value] = df[select_columns_value].fillna(0)
+        # Now convert to integers
+        df[select_columns_value] = df[select_columns_value].astype(int)
+
+        
+        rows = len(df.index)
+        header_nilai_tryout = data_value.columns.tolist()
+        headers = df.axes[1].tolist()
+        
+        attributes = len(data_value)
+        types = []
+        maxs = []
+        mins = []
+        means = []
             
-            serialized_df = serialize_df_to_json(df)            
-            redis_client.set('df_key',serialized_df)
-            return redirect(url_for('index'))
-        else:
-            return "File harus berupa CSV", 400
+        for i in range (len(header_nilai_tryout)):
+                types.append(str(df[header_nilai_tryout[i]].dtypes.name))
+                if df[header_nilai_tryout[i]].dtypes != object:
+                    maxs.append(float(df[header_nilai_tryout[i]].max()))
+                    mins.append(float(df[header_nilai_tryout[i]].min()))
+                    means.append(float(df[header_nilai_tryout[i]].mean()))
+                else : 
+                    maxs.append(0)
+                    mins.append(0)
+                    means.append(0)
+                
+        zipped_data = list(zip(header_nilai_tryout,types,maxs,mins,means))
+        datas = df.values.tolist()
+        data = {
+                'header' : header_nilai_tryout,
+                'headers' : headers,
+                'name' : name,
+                'attributes' : attributes,
+                'rows' : rows,
+                'zipped_data' : zipped_data,
+                'df' : datas,
+                'type' : types,
+                'maxs' : maxs,
+                'mins' : mins,
+                'means' : means,
+                'zip_select_col' : None,
+            }
+        RedisService.set_data(key='data_key',data=data)
+        RedisService.set_data(data=df, key='df_key')            
+        return redirect(url_for('index'))
     except Exception as e :
-        app.logger.error(f'Error occurred: {e} - Path: {request.path}')
+        app.logger.error(f'Error occurred: {e}')
+        print(f'Error occurred: {e}')
         return "An error occurred", 500
 
+###page
+@app.route('/help',methods=['GET'])
+def help_page():
+    return render_template('pages/help.html',title='Help')
+@app.route('/import_file',methods=['GET','POST'])
+def import_file():
+    if request.method == 'POST':
+        # Proses file upload
+        file = request.files['file']
+        if not file.filename.endswith('.csv'):
+            flash('File tidak valid. Pastikan file yang diunggah adalah file CSV.', 'error')
+            return redirect(url_for('import_file'))
+        if file and file.filename.endswith('.csv') :
+            # Simpan status upload di session
+            session['file_uploaded'] = True
+            data = {
+                'file_name' : file.filename,
+                'file_size' : file.content_length,
+                'file_type' : file.content_type
+            }
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(filepath)
+            RedisService.set_data(key='file_uploaded',data=data)
+            return redirect(url_for('upload_file'))
+    else : 
+        # Render halaman import file
+        return render_template('pages/import.html',title='Import File')
 
 @app.route('/data',methods=['GET'])
 def get_data():
-    if request.method == "GET":
-        serialize_data = redis_client.get('data_key')
-        if serialize_data or None:
-            data = json.loads(serialize_data)
-            return render_template('data.html', data=data)
-        else:
-            return render_template('data.html', data=None)
+    serialize_data = RedisService.get_data('data_key')
+    if not session.get('select_columns'):
+        flash('Silahkan pilih kolom terlebih dahulu', 'error')
+        return redirect(url_for('index'))
+    else:
+        return render_template('pages/data.html', data=serialize_data,title='Normalization')
 #page result
 @app.route('/result', methods=['GET', 'POST'])
 def get_result():
-    get_data_key = retrive_data_from_redis('data_key')
+    get_data_key = RedisService.get_data('data_key')
+    if not session.get('correct_data') and not session.get('normalization_data'):
+        # Jika session kmeans tidak ada, redirect ke halaman data
+        flash('Data belum diclustering.', 'error')
+        return redirect(url_for('get_data'))
     
     if request.method == "POST":
         # Ambil nilai kValue dari form
@@ -166,7 +185,7 @@ def get_result():
         get_data_key['kmeans'] = kmenas_clustering(kValue)
         
         # Simpan data yang diperbarui ke Redis
-        set_data_to_redis('data_key', get_data_key)
+        RedisService.set_data(key='data_key',data= get_data_key)
         
         # Perbarui hasil di Redis
         update_result(get_data_key)
@@ -174,13 +193,13 @@ def get_result():
         # Redirect ke halaman result untuk menampilkan hasil yang diperbarui
         return redirect(url_for('get_result'))
     
-    if request.method == "GET":
+    else :
         # Ambil parameter halaman dari URL (default: halaman 1)
-        
         page = request.args.get('page', 1, type=int)
         
         # Jumlah data per halaman
         per_page = 10
+        
         
         # Ambil data clustering dari Redis
         if 'result_kmeans' in get_data_key:
@@ -202,28 +221,105 @@ def get_result():
             clustering_data['total_pages'] = total_pages
         else:
             clustering_data = None
-        return render_template('result.html', data=get_data_key, clustering_data=clustering_data, header = header)
-        
+        return render_template('pages/result.html', data=get_data_key, clustering_data=clustering_data, header = header,title='Result')
     
-    return redirect(url_for('get_result'))
     
 def update_result(data_key) :
-    get_df = retrive_df_from_redis('df_key')
+    get_df = RedisService.get_data('df_key',as_dataframe=True)
     get_cluster = data_key['kmeans']['cluster']
     df = pd.DataFrame(get_df)
-    df['Cluster'] = get_cluster
+    df['cluster'] = get_cluster
     header = df.columns.tolist()
     value= df.values.tolist()
     data_key['result_kmeans'] = {
         'header' : header,
         'data' : value
     }
-    return set_data_to_redis('data_key',data_key)
+    return RedisService.set_data(key='data_key',data=data_key)
+
+
+## render markdown 
+### rekomendasi
+@app.route('/rekomendasi',methods=['GET'])
+def rekomendasi() : 
+    if session.get('ai_called') : 
+        return md_renderer.render_file('rekomendasi_guru.md')
+    
+    session['ai_called'] = True
+    return md_renderer.render_file('rekomendasi_guru.md')
+@app.route('/rekomendasi/get_data', methods=['POST'])
+def get_data_rekomendasi() -> str :
+    #jika tidak ada session
+    if 'ai_called' not in session:
+        session['ai_called'] = False
+        try:
+            api_groq = ApiGroq(api_key=str(groq_api_key))
+            recommendation = api_groq.recomendation(
+                key_redis='data_key',
+                key_data='result_kmeans'
+            )
+            
+            session['ai_called'] = True
+            return jsonify({
+                "success": True,
+                "message" : recommendation,
+                "redirect_url": url_for('rekomendasi')
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 500
+                
+    if session['ai_called'] : 
+        return jsonify({
+            "redirect": True,
+            "redirect_url": url_for('rekomendasi')
+        })
+
+@app.route('/rekomendasi/test_data')
+def test_data() : 
+    df = RedisService.get_data(key='data_key')
+    result_kmeans = df['result_kmeans']
+    df_result_kmeans = pd.DataFrame(data=result_kmeans['data'],columns=result_kmeans['header'])
+    df_columns = df_result_kmeans.columns.to_list()
+    # data = df_result_kmeans.iloc[:,:].to_dict()
+    return df_columns
+
+
+##Reset DB
+@app.route('/reset-all')
+def reset_all():
+    try:
+        # 1. Hapus semua data Redis
+        path = RedisService.get_data(key='file_uploaded')['file_name']
+        folder_path = os.path.join(app.config['UPLOAD_FOLDER'], path)
+        RedisService.clearDB();
+        # 2. Hapus file tertentu
+        files_to_delete = [
+            folder_path,
+            'rekomendasi_guru.md',
+        ]
+        
+        for file_path in files_to_delete:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        # 3. Hapus session
+        session.clear()
+        flash('Reset berhasil! Semua data dan file telah dihapus.', 'success')
+    except Exception as e:
+        app.logger.error(f'Error saat reset: {str(e)}')
+        flash('Gagal melakukan reset', 'danger')
+    return redirect(url_for('import_file')) 
+
+
+###Download
 
 @app.route('/download/excel')
 def download_excel():
     # Ambil data dari Redis
-    get_data_key = retrive_data_from_redis('data_key')
+    get_data_key = RedisService.get_data(key='data_key')
     
     if 'result_kmeans' in get_data_key:
         clustering_data = get_data_key['result_kmeans']
@@ -246,53 +342,99 @@ def download_excel():
         return "No clustering data available", 404
 
 @app.route('/download/pdf')
+
+
 def download_pdf():
     # Ambil data dari Redis
-    get_data_key = retrive_data_from_redis('data_key')
+    if not session.get('ai_called'):
+        flash('Silahkan pilih rekomendasi AI terlebih dahulu', 'error')
+        return redirect(url_for('get_result'))
     
-    if 'kmeans' in get_data_key:
-        clustering_data = get_data_key['kmeans']
+    try:
+        #path markdown
+        markdown_path = os.path.join(app.root_path,'rekomendasi_guru.md')
         
-        # Buat file PDF
-        pdf_file = BytesIO()
-        pdf = canvas.Canvas(pdf_file, pagesize=letter)
+              
+        # Baca konten markdown
+        with open(markdown_path, 'r', encoding='utf-8') as file:
+            markdown_content = file.read()
+   
+        # Konversi markdown ke HTML
+        html_content = markdown.markdown(markdown_content,extensions=['tables', 'fenced_code'])
         
-        # Tambahkan judul
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(100, 750, "Clustering Result")
+        #render ke template html
+        full_html = render_template('pages/download_pdf.html', content=html_content)
         
-        # Tambahkan data ke PDF
-        pdf.setFont("Helvetica", 12)
-        y = 700
-        for i, (name, cluster) in enumerate(zip(clustering_data['name'], clustering_data['cluster'])):
-            pdf.drawString(100, y, f"{i+1}. {name} - Cluster {cluster}")
-            y -= 20
-            if y < 50:  # Jika mencapai batas bawah, buat halaman baru
-                pdf.showPage()
-                y = 750
+        # Opsi untuk pdfkit
+        options = {
+            'enable-local-file-access': None,
+            'margin-top': '15mm',
+            'margin-right': '15mm',
+            'margin-bottom': '15mm',
+            'margin-left': '15mm',
+            'encoding': "UTF-8",
+            'quiet': '',
+            'no-stop-slow-scripts': '',
+            'javascript-delay': '1000'  # Beri waktu untuk JS dijalankan
+        }
         
-        pdf.save()
-        pdf_file.seek(0)
+        # Buat file PDF sementara
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            pdfkit.from_string(
+                full_html, 
+                temp_pdf.name, 
+                configuration=PDFKIT_CONFIG,
+                options=options
+                )
+            temp_pdf_path = temp_pdf.name
+        
+        # Kirim file PDF sebagai response
         return send_file(
-            pdf_file,
-            mimetype='application/pdf',
+            temp_pdf_path,
             as_attachment=True,
-            download_name='clustering_result.pdf'
+            download_name="Rekomendasi Guru.pdf",
+            mimetype='application/pdf'
         )
-    else:
-        return "No clustering data available", 404
-      
     
+    except Exception as e:
+        flash('Gagal mengunduh PDF', 'error')
+        app.logger.error(f'Error saat mengunduh PDF: {str(e)}')
+        redirect(url_for('get_result'))
+    
+    # finally:
+    #     # Pastikan file temporary dihapus setelah dikirim
+    #     if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
+    #         #os.remove(temp_pdf_path)
+    #         return None
+      
+
+@app.route('/download/download-template')
+def download_template():
+    # Pastikan file template ada di folder 'static/templates'
+    template_path = os.path.join(app.root_path, 'static', 'templates', 'file.csv')
+    
+    if not os.path.exists(template_path):
+        return "Template tidak ditemukan", 404
+    
+    return send_from_directory(
+        directory=os.path.join(app.root_path, 'static', 'templates'),
+        path='file.csv',
+        as_attachment=True,
+        download_name='file.csv'
+    )
 
 #select columns 
 @app.route('/select/column',methods = ['POST','GET'])
-def select_columns() ->str : 
+def select_columns() ->str :
+    if request.form.getlist('columns_to_delete') == []:
+        flash('Silahkan pilih kolom terlebih dahulu', 'error')
+        return redirect(url_for('index')) 
+    
     if request.method == 'POST':
-        redis_client.delete('sel_col_key')
+        RedisService.delete_key(key='sel_col_key')
         columns = request.form.getlist('columns_to_delete')
-        data = redis_client.get('data_key')
-        data = json.loads(data.decode('utf-8'))
-        df = retrive_df_from_redis('df_key')
+        data = RedisService.get_data(key='data_key')
+        df = RedisService.get_data(key='df_key',as_dataframe=True)
         df_select_col = df.loc[:,columns]
         header = df_select_col.columns.tolist()
         sel_col = {}
@@ -301,28 +443,25 @@ def select_columns() ->str :
         
         data['zip_select_col'] = list(zip(header,sel_col.values()))
     
-        set_data_to_redis('data_key',data)
-        return redirect(url_for('index'))
-    else : 
-        data = redis_client.get('data_key').decode('utf-8')
-        if data : 
-            data = json.loads(data)
-        return redirect(url_for('index'))
+        RedisService.set_data(key='data_key',data=data)
+        session['select_columns'] = True
+        return redirect(url_for('get_data'))
+    
 
 #method normalization 
 @app.route('/select/method', methods=['POST'])
 def select_method_normalization() -> str : 
-    data = redis_client.get('data_key')
+    data = RedisService.get_data(key='data_key')
+    if not session.get('correct_data') : 
+        flash('Silahkan pilih Replace with Mean terlebih dahulu', 'error')
+        return redirect(url_for('get_data'))
     if data:
-        json_string = data.decode('utf-8')
-        json_data = json.loads(json_string)
-        
         # Ensure 'zip_select_col' key exists in the JSON data
-        if 'zip_select_col' not in json_data:
+        if 'zip_select_col' not in data:
             return "Key 'zip_select_col' not found in data", 400
         
         # Convert 'zip_select_col' to DataFrame
-        zip_select_col = json_data['zip_select_col']
+        zip_select_col = data['zip_select_col']
         df = pd.DataFrame({col: values for col, values in zip_select_col})
         
         # select_method = request.form.get('select_method')
@@ -338,13 +477,15 @@ def select_method_normalization() -> str :
         
         # Simpan data yang dinormalisasi ke Redis
         print(df.columns.tolist())
-        json_data['zip_select_col'] = list(zip(df.columns.tolist(), normalized_data.T.tolist()))
+        data['zip_select_col'] = list(zip(df.columns.tolist(), normalized_data.T.tolist()))
         normalized_data_json = {
             'header': df.columns.tolist(),
             'data': normalized_data.tolist()    
         }
-        set_data_to_redis('normalized_key', normalized_data_json)
-        set_data_to_redis('data_key', json_data)
+        RedisService.set_data(key='normalized_key', data= normalized_data_json)
+        RedisService.set_data(key='data_key', data= data)
+        session['normalization_data'] = True
+        session['kmeans'] = False
         return redirect(url_for("get_data"))
     else:
         return "No data found", 400
@@ -352,33 +493,39 @@ def select_method_normalization() -> str :
 #correct data
 @app.route('/select/correct_data', methods=['POST'])
 def select_correct_data() -> redirect:
-    data_key = retrive_data_from_redis('data_key')
-    zip_normalized = data_key['zip_select_col']    
-    select_method = request.form.get('select_correct_data')
-    df = pd.DataFrame({col: values for col, values in zip_normalized})
-    print(df)
-    # if select_method == 'delete':
-    #     df_zip_normalized= delete_specific_values(df)
-    #     print('sesudah di delete',df_zip_normalized.T.values.tolist())
-    #     normalized_data_json = {
-    #         'header': df.columns.tolist(),
-    #         'data': df_zip_normalized.values.tolist()
-    #     }
-    #     data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.values.tolist()))
-    #     set_data_to_redis('data_key',data_key)
-    #     set_data_to_redis('normalized_key',normalized_data_json)
-    #     return redirect(url_for('get_data'))        
-    # elif select_method == 'replace':
-    arr_df = np.array(df.values)
-    df_zip_normalized = fill_zeros_with_last(arr_df)
-    normalized_data_json = {
-        'header': df.columns.tolist(),
-        'data': df_zip_normalized.T.tolist()
-    }
-    data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.tolist()))
-    set_data_to_redis('data_key',data_key)
-    set_data_to_redis('normalized_key',normalized_data_json)
-    return redirect(url_for('get_data'))        
+    try:
+        data_key = RedisService.get_data(key='data_key')
+        zip_normalized = data_key['zip_select_col']    
+        select_method = request.form.get('select_correct_data')
+        df = pd.DataFrame({col: values for col, values in zip_normalized})
+        # if select_method == 'delete':
+        #     df_zip_normalized= delete_specific_values(df)
+        #     print('sesudah di delete',df_zip_normalized.T.values.tolist())
+        #     normalized_data_json = {
+        #         'header': df.columns.tolist(),
+        #         'data': df_zip_normalized.values.tolist()
+        #     }
+        #     data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.values.tolist()))
+        #     set_data_to_redis('data_key',data_key)
+        #     set_data_to_redis('normalized_key',normalized_data_json)
+        #     return redirect(url_for('get_data'))        
+        # elif select_method == 'replace':
+        arr_df = np.array(df.values)
+        df_zip_normalized = fill_zeros_with_last(arr_df)
+        print(df_zip_normalized.T.tolist())
+        normalized_data_json = {
+            'header': df.columns.tolist(),
+            'data': df_zip_normalized.T.tolist()
+        }
+        data_key['zip_select_col'] = list(zip(df.columns.tolist(), df_zip_normalized.T.tolist()))
+        RedisService.set_data(key='data_key',data=data_key)
+        RedisService.set_data(key='normalized_key',data=normalized_data_json)
+        session['correct_data'] = True
+        return redirect(url_for('get_data'))
+    except Exception as e:
+        app.logger.error(f'Error occurred: {e}')
+        print(f'Error occurred: {e}')
+        return "An error occurred", 500       
         
     
 
@@ -394,6 +541,7 @@ def fill_zeros_with_last(arr) -> np.ndarray:
         # Hitung rata-rata dari elemen yang bukan 0 di baris tersebut
         non_zero_non_nan_mean = row[(row != 0) & (~np.isnan(row))].mean() if np.count_nonzero(row) != 0 else 0
         # Gantikan nilai 0 dengan rata-rata
+        print(non_zero_non_nan_mean)
         row[row == 0] = non_zero_non_nan_mean
         row[np.isnan(row)] = non_zero_non_nan_mean
       return arr
@@ -401,10 +549,10 @@ def fill_zeros_with_last(arr) -> np.ndarray:
 ## K-means clustering
 
 def elbow_method () -> str:
-    normalized_key = retrive_data_from_redis('normalized_key')
-    if normalized_key['data']: 
-        data_key = retrive_data_from_redis('data_key')
-        df = pd.DataFrame(normalized_key['data'], columns=normalized_key['header'])
+    normalized_key = RedisService.get_data(key='normalized_key')
+    if session.get('normalization_data') and session.get('correct_data') : 
+        data_key = RedisService.get_data(key='data_key')
+        df = pd.DataFrame(data=normalized_key['data'], columns=normalized_key['header'])
         distortions = []
         K = list(range(1, 10))
         for k in K:
@@ -416,30 +564,30 @@ def elbow_method () -> str:
             'distortions': distortions
         }
         data_key['elbow_method'] = list(zip(K,distortions))
-        set_data_to_redis('data_key', data_key)
+        RedisService.set_data(key='data_key',data= data_key)
+        session['elbow_method'] = True
         return data_json
     else :
         normalized_data = {
                 'header': None,
                 'data' : None
         } 
-        return set_data_to_redis('normalized_key',normalized_data)
+        return RedisService.set_data(key='normalized_key',data=normalized_data)
         
 
 def kmenas_clustering(k : int) -> str:
-    normalized_key = retrive_data_from_redis('normalized_key')
+    normalized_key = RedisService.get_data(key='normalized_key')
     print(f"clustering with {k}")
-    if normalized_key['data'] : 
-        data_key = retrive_data_from_redis('data_key')
+    if session.get('file_uploaded') and normalized_key['data'] : 
+        data_key = RedisService.get_data(key='data_key')
         name_data = data_key['df']
         # Mengurangi dimensi data menggunakan PCA 
-        pca = PCA(n_components=2)
-        reduced_data = pca.fit_transform(normalized_key['data'])
+        data = normalized_key['data']
         # Mengunakan K-Means pada data yang telah direduksi
         kmeans = KMeans(n_clusters=k,max_iter=100, init='k-means++', random_state=34)
-        kmeans.fit(reduced_data)
+        kmeans.fit(data)
         
-        data_to_json = reduced_data.tolist()
+        
         # Mengambil nama siswa    
         name = []
         for i in range(len(name_data)):
@@ -449,8 +597,8 @@ def kmenas_clustering(k : int) -> str:
         cluster = kmeans.labels_.tolist()
         cluster_centers = kmeans.cluster_centers_.tolist()
     
-        silhouette_score_val = silhouette_score(reduced_data, kmeans.labels_)
-        sample_silhouette_values = silhouette_samples(reduced_data, kmeans.labels_)
+        silhouette_score_val = silhouette_score(data, kmeans.labels_)
+        sample_silhouette_values = silhouette_samples(data, kmeans.labels_)
         silhouette_per_cluster = []
         for i in range(k):
             ith_cluster_silhouette_values = \
@@ -459,7 +607,7 @@ def kmenas_clustering(k : int) -> str:
             silhouette_per_cluster.append(ith_cluster_silhouette_values.tolist())
     
         data_key =  {
-            'data' : data_to_json,
+            'data' : data,
             'cluster' : cluster,
             'cluster_centers' : cluster_centers,
             'name' : name,
@@ -467,12 +615,14 @@ def kmenas_clustering(k : int) -> str:
             'silhouette_per_cluster' : silhouette_per_cluster
             
             }
+        session['kmeans'] = True
         return data_key     
-    
+   
+
 ##api
 
 def get_null_or_missing_value ()->str : 
-    df = retrive_df_from_redis('df_key')
+    df = RedisService.get_data(key='df_key',as_dataframe=True)
     df_int = []
     for col_name, col_type in df.dtypes.items():  # Iterate through column names and types
         if col_type != 'object':
@@ -483,18 +633,10 @@ def get_null_or_missing_value ()->str :
     zero_counts_json = {'labels' : zero_count.index.tolist(), 'values' : zero_count.tolist()}
     return zero_counts_json
 
-def sum_status()->str:
-    # Example implementation
-    df = retrive_df_from_redis('df_key')
-    sum_status= df['Status'].value_counts().tolist()
-    data_sum_status = {
-        'labels' : df['Status'].unique().tolist(),
-        'values' : sum_status
-    }
-    return data_sum_status
+
     
 def top_students_with_zero() ->str :
-    df = retrive_df_from_redis('df_key')
+    df = RedisService.get_data(key='df_key',as_dataframe=True)
     value_columns = df.columns[2:]  # Mengambil semua kolom kecuali 'No' dan 'id user'
 
     # 2. Hitung jumlah nilai 0 untuk setiap siswa
@@ -507,7 +649,7 @@ def top_students_with_zero() ->str :
     # top_students_with_zero = sorted_df[['Nama \npanggilan', 'zero_count']].head(10).tolist()
     # Ambil 10 siswa teratas
     data_top_students_with_zero = {
-        'labels' : sorted_df['Nama \npanggilan'].head(10).values.tolist(),
+        'labels' : sorted_df['Nama panggilan'].head(10).values.tolist(),
         'values' : sorted_df['zero_count'].head(10).values.tolist()
         }
     # Tampilkan hasil
@@ -523,24 +665,20 @@ def get_data_from_dataframe() -> str:
 def api() -> str:    
     data = {
             'missing_value': get_null_or_missing_value(),
-            'sum_status': sum_status(),
             'top_student_with_zero_': top_students_with_zero(),
             }
     return data
 
 @app.route('/api/data/boxplot')
 def api_dataframe() -> str: 
-    df = retrive_df_from_redis('df_key')
-    data = df.iloc[:, 4:]
-    delete_col = ['Status','Gel','Jumlah absen \n TWK']
-    data = data.drop(delete_col, axis=1)
-    data = data.values.tolist()
-    header = df.columns[4:].tolist()
+    df = RedisService.get_data(key='df_key',as_dataframe=True)
+    data = df.iloc[:, 3:].values.tolist()
+    header = df.columns[3:].tolist()
     return {'data': data, 'header': header}
 
 @app.route('/api/data/kmeans')
 def api_kmeans() :    
-    get_data = retrive_data_from_redis('data_key')
+    get_data = RedisService.get_data(key='data_key')
     if 'kmeans' in get_data : 
         get_kmeans = get_data['kmeans']
         data = {'kmeans' : get_kmeans}

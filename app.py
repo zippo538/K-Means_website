@@ -21,6 +21,19 @@ from services.redis_service import RedisService
 from controller.api_groq import ApiGroq
 from controller.pdfConfig import get_pdfkit_config
 
+
+#detect sepator csv
+def detect_separator(file_path):
+    with open(file_path, 'r', newline='', encoding='utf-8') as file:
+        first_line = file.readline()
+        
+        if ',' in first_line:
+            return pd.read_csv(file_path,sep=',')
+        elif ';' in first_line:
+            return pd.read_csv(file_path,sep=';')
+        else:
+            return "Tidak ditemukan pemisah ',' atau ';'."
+
 load_dotenv()
 app = create_app()
 groq_api_key = os.getenv('GROQ_KEY')
@@ -58,11 +71,21 @@ def index():
 def upload_file():
     try : 
         file = RedisService.get_data(key='file_uploaded')['file_name']
-        df= pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], file))
+        df= detect_separator(os.path.join(app.config['UPLOAD_FOLDER'], file))
         name = file
                     
         # Ambil header nilai try
-        data_value = df.iloc[:, 4:]          
+        data_value = df.iloc[:, 3:]       
+           
+        # ubah data ke int 
+        # Convert the columns to numeric, replacing non-numeric values with NaN
+        select_columns_value = df.columns[3:]
+        df[select_columns_value] = df[select_columns_value].apply(pd.to_numeric, errors='coerce')
+        # Fill NaN values with 0 for these columns. You can use another strategy if necessary.
+        df[select_columns_value] = df[select_columns_value].fillna(0)
+        # Now convert to integers
+        df[select_columns_value] = df[select_columns_value].astype(int)
+
         
         rows = len(df.index)
         header_nilai_tryout = data_value.columns.tolist()
@@ -649,8 +672,8 @@ def api() -> str:
 @app.route('/api/data/boxplot')
 def api_dataframe() -> str: 
     df = RedisService.get_data(key='df_key',as_dataframe=True)
-    data = df.iloc[:, 4:].values.tolist()
-    header = df.columns[4:].tolist()
+    data = df.iloc[:, 3:].values.tolist()
+    header = df.columns[3:].tolist()
     return {'data': data, 'header': header}
 
 @app.route('/api/data/kmeans')

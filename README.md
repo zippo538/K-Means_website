@@ -1,4 +1,4 @@
-# Skripsi Data Mining 
+# GSK (Groupping student K-Means)
 
-Flask & D3.JS & HTML & CSS
+GSK merupakan sebuah web apps yang dapat mengelompokkan siswa berdasarkan nilai menggunakan algoritma K-means. Tekonologi yang digunakan D3.JS, Langchain, 
 
